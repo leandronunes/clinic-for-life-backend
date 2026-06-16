@@ -24,7 +24,7 @@ RSpec.describe "Api::V1::Anamneses", type: :request do
       params = {
         objectives: "Lose weight",
         notes: "Healthy",
-        external_professionals: [{ name: "Dr. House", specialty: "Diagnostics" }]
+        external_professionals: [ { name: "Dr. House", specialty: "Diagnostics" } ]
       }
       patch "/api/v1/students/#{student.id}/anamnesis", params: params, headers: auth_headers(personal)
 
@@ -38,10 +38,10 @@ RSpec.describe "Api::V1::Anamneses", type: :request do
       create(:external_professional, anamnesis: anamnesis, name: "Old")
 
       patch "/api/v1/students/#{student.id}/anamnesis",
-            params: { external_professionals: [{ name: "New" }] }, headers: auth_headers(personal)
+            params: { external_professionals: [ { name: "New" } ] }, headers: auth_headers(personal)
 
       names = json_body["data"]["external_professionals"].map { |p| p["name"] }
-      expect(names).to eq(["New"])
+      expect(names).to eq([ "New" ])
     end
 
     it "forbids a student from editing the anamnesis" do

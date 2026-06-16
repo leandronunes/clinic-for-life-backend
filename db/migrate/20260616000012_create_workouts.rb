@@ -12,6 +12,6 @@ class CreateWorkouts < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :workouts, [:student_id, :status]
+    add_index :workouts, [ :student_id, :status ]
   end
 end

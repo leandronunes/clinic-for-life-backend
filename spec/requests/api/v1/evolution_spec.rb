@@ -11,7 +11,7 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
       create(:bioimpedance_measurement, student: student, measured_on: "2025-01-01")
       get "/api/v1/students/#{student.id}/evolution", headers: auth_headers(personal)
       dates = json_body["data"].map { |m| m["measured_on"] }
-      expect(dates).to eq(["2025-01-01", "2025-02-01"])
+      expect(dates).to eq([ "2025-01-01", "2025-02-01" ])
     end
   end
 

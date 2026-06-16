@@ -13,6 +13,6 @@ class CreateBioimpedanceMeasurements < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :bioimpedance_measurements, [:student_id, :measured_on], unique: true
+    add_index :bioimpedance_measurements, [ :student_id, :measured_on ], unique: true
   end
 end

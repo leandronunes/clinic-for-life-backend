@@ -14,7 +14,7 @@ class CreateBiomechanicalAssessments < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :biomechanical_images, [:biomechanical_assessment_id, :slot],
+    add_index :biomechanical_images, [ :biomechanical_assessment_id, :slot ],
               unique: true, name: "index_biomechanical_images_on_assessment_and_slot"
   end
 end

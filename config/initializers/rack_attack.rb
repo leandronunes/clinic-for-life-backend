@@ -2,7 +2,7 @@
 class Rack::Attack
   # Allow local development tooling to bypass throttling.
   safelist("allow-localhost") do |req|
-    ["127.0.0.1", "::1"].include?(req.ip)
+    [ "127.0.0.1", "::1" ].include?(req.ip)
   end
 
   # General throttle: 300 requests per 5 minutes per IP.
@@ -16,6 +16,6 @@ class Rack::Attack
   end
 
   self.throttled_responder = lambda do |_request|
-    [429, { "Content-Type" => "application/json" }, [{ error: "Too many requests" }.to_json]]
+    [ 429, { "Content-Type" => "application/json" }, [ { error: "Too many requests" }.to_json ] ]
   end
 end

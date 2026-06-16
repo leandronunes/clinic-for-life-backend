@@ -43,7 +43,7 @@ RSpec.describe Workout, type: :model do
       workout = create(:workout)
       second = create(:exercise, workout: workout, position: 2)
       first = create(:exercise, workout: workout, position: 1)
-      expect(workout.exercises).to eq([first, second])
+      expect(workout.exercises).to eq([ first, second ])
     end
   end
 end
