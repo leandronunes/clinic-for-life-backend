@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: clinic_for_life_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clinic
+      POSTGRES_PASSWORD: clinic
+      POSTGRES_DB: clinic_for_life_development
+    ports:
+      - "5433:5432"
+    volumes:
+      - clinic_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinic"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clinic_pg_data:
