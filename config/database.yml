@@ -57,6 +57,6 @@ test:
 #
 production:
   <<: *default
-  database: clinic_for_life_production
+  database: clinic_for_life_db
   username: <%= ENV.fetch("DATABASE_USERNAME", "clinic") %>
   password: <%= ENV["CLINIC_FOR_LIFE_BACKEND_DATABASE_PASSWORD"] %>
