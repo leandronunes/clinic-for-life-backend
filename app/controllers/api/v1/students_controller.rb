@@ -20,6 +20,8 @@ module Api
       # GET /api/v1/students/:id
       def show
         authorize_student!(@student)
+        return if performed?
+
         render_data(StudentSerializer.new(@student).as_json)
       end
 
@@ -35,6 +37,8 @@ module Api
       # PATCH/PUT /api/v1/students/:id
       def update
         authorize_student!(@student)
+        return if performed?
+
         @student.update!(student_params)
         audit!("student.update", record: @student)
         render_data(StudentSerializer.new(@student).as_json)
