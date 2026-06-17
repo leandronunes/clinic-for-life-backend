@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: clinic
       POSTGRES_DB: clinic_for_life_development
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - clinic_pg_data:/var/lib/postgresql/data
     healthcheck:
