@@ -9,15 +9,15 @@ module Api
         days  = range_days
 
         cards = [
-          { label: "Active Students", value: scope.where(status: "active").count,
+          { label: "Alunos Ativos", value: scope.where(status: "active").count,
             icon: "users",     delta: delta_pct(scope, days) },
-          { label: "Trainers",        value: trainer_scope.count,
+          { label: "Personais",        value: trainer_scope.count,
             icon: "trainer",   delta: delta_pct(Trainer, days) },
-          { label: "Partners",        value: Partner.count,
+          { label: "Parceiros",        value: Partner.count,
             icon: "handshake", delta: delta_pct(Partner, days) },
-          { label: "Assessments",     value: assessment_count(scope),
+          { label: "Avaliações",     value: assessment_count(scope),
             icon: "clipboard", delta: assessment_delta(scope, days) },
-          { label: "Active Workouts", value: Workout.active.where(student: scope).count,
+          { label: "Treinos Ativos", value: Workout.active.where(student: scope).count,
             icon: "dumbbell",  delta: delta_pct(Workout.where(student: scope), days) }
         ]
 

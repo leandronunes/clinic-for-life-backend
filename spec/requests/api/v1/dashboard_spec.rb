@@ -12,7 +12,7 @@ RSpec.describe "Api::V1::Dashboard", type: :request do
 
       expect(response).to have_http_status(:ok)
       labels = json_body["data"].map { |c| c["label"] }
-      expect(labels).to include("Active Students", "Trainers", "Partners")
+      expect(labels).to include("Alunos Ativos", "Personais", "Parceiros")
     end
 
     it "includes a numeric delta field in every card" do
@@ -38,7 +38,7 @@ RSpec.describe "Api::V1::Dashboard", type: :request do
 
       get "/api/v1/dashboard/kpis", headers: auth_headers(personal)
       cards = json_body["data"].index_by { |c| c["label"] }
-      expect(cards["Active Students"]["value"]).to eq(1)
+      expect(cards["Alunos Ativos"]["value"]).to eq(1)
     end
 
     it "forbids a student" do

@@ -5,8 +5,8 @@ class Trainer < ApplicationRecord
   has_one :user, dependent: :nullify
 
   validates :name, presence: true
-  validates :cpf, presence: true, uniqueness: true
-  validates :cref, presence: true, uniqueness: true
+  validates :cpf, uniqueness: true, allow_blank: true
+  validates :cref, uniqueness: true, allow_blank: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :status, presence: true, inclusion: { in: STATUSES }

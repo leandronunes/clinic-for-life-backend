@@ -61,6 +61,8 @@ group :development, :test do
 end
 
 group :test do
+  # SQLite for testing
+  gem "sqlite3", ">= 2.1"
   # Code coverage analysis
   gem "simplecov", "~> 0.22", require: false
 end

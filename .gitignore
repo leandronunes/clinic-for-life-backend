@@ -64,4 +64,4 @@
 *~
 .DS_Store
 Thumbs.db
-
+db/test.sqlite3
