@@ -10,7 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_19_000001) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+  enable_extension "pgcrypto"
+
   create_table "anamneses", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "diastolic_pressure"
@@ -43,7 +47,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
     t.datetime "created_at", null: false
     t.string "ip_address"
     t.string "justification"
-    t.json "metadata", default: {}, null: false
+    t.jsonb "metadata", default: {}, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable_type_and_auditable_id"
@@ -52,7 +56,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
 
   create_table "bioimpedance_imports", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.json "errors_log", default: [], null: false
+    t.jsonb "errors_log", default: [], null: false
     t.string "filename", null: false
     t.integer "imported_count", default: 0, null: false
     t.integer "total_rows", default: 0, null: false
@@ -94,14 +98,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
   end
 
   create_table "evolution_photos", force: :cascade do |t|
+    t.bigint "bioimpedance_measurement_id"
     t.datetime "created_at", null: false
-    t.decimal "fat_percentage", precision: 5, scale: 2
     t.string "image_url", null: false
-    t.decimal "muscle_mass_kg", precision: 6, scale: 2
     t.bigint "student_id", null: false
     t.date "taken_on", null: false
     t.datetime "updated_at", null: false
-    t.decimal "weight_kg", precision: 6, scale: 2
+    t.index ["bioimpedance_measurement_id"], name: "index_evolution_photos_on_bioimpedance_measurement_id", unique: true
     t.index ["student_id"], name: "index_evolution_photos_on_student_id"
   end
 
@@ -248,6 +251,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
   add_foreign_key "bioimpedance_measurements", "students"
   add_foreign_key "biomechanical_assessments", "students"
   add_foreign_key "biomechanical_images", "biomechanical_assessments"
+  add_foreign_key "evolution_photos", "bioimpedance_measurements"
   add_foreign_key "evolution_photos", "students"
   add_foreign_key "exams", "students"
   add_foreign_key "exercises", "workouts"

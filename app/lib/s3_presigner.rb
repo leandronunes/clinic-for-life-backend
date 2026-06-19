@@ -8,7 +8,7 @@ require "aws-sdk-s3"
 # Optional:
 #   S3_PRESIGN_EXPIRY  — seconds the presigned URL stays valid (default 600)
 class S3Presigner
-  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo].freeze
+  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image].freeze
 
   ALLOWED_CONTENT_TYPES = %w[
     video/mp4
