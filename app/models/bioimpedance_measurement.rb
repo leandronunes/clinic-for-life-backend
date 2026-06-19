@@ -1,5 +1,6 @@
 class BioimpedanceMeasurement < ApplicationRecord
   belongs_to :student
+  has_one :evolution_photo
 
   validates :weight_kg, presence: true,
                         numericality: { greater_than: 0 }

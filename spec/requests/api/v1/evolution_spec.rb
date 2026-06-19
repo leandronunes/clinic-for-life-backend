@@ -13,37 +13,76 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
       dates = json_body["data"].map { |m| m["measured_on"] }
       expect(dates).to eq([ "2025-01-01", "2025-02-01" ])
     end
+
+    it "includes photo_url when a photo is linked" do
+      measurement = create(:bioimpedance_measurement, student: student)
+      create(:evolution_photo, bioimpedance_measurement: measurement)
+      get "/api/v1/students/#{student.id}/evolution", headers: auth_headers(personal)
+      record = json_body["data"].first
+      expect(record["photo_url"]).to eq("https://example.com/photo.jpg")
+      expect(record["photo_id"]).to be_present
+    end
+
+    it "returns null photo_url when no photo is linked" do
+      create(:bioimpedance_measurement, student: student)
+      get "/api/v1/students/#{student.id}/evolution", headers: auth_headers(personal)
+      expect(json_body["data"].first["photo_url"]).to be_nil
+    end
   end
 
   describe "GET .../evolution/photos" do
     it "returns evolution photos" do
-      create(:evolution_photo, student: student)
+      measurement = create(:bioimpedance_measurement, student: student)
+      create(:evolution_photo, bioimpedance_measurement: measurement)
       get "/api/v1/students/#{student.id}/evolution/photos", headers: auth_headers(personal)
       expect(json_body["data"].size).to eq(1)
+      expect(json_body["data"].first).to include("image_url", "measurement_id", "taken_on")
     end
   end
 
   describe "POST .../evolution/photos" do
-    let(:valid_params) { { taken_on: "2025-06-01", image_url: "data:image/jpeg;base64,/9j/abc" } }
+    let(:measurement) { create(:bioimpedance_measurement, student: student, measured_on: "2025-06-01") }
+    let(:valid_params) do
+      { bioimpedance_measurement_id: measurement.id, image_url: "https://s3.example.com/photo.jpg" }
+    end
 
-    it "creates an evolution photo and returns 201" do
+    it "creates a photo linked to the measurement and returns 201" do
       expect do
         post "/api/v1/students/#{student.id}/evolution/photos",
              params: valid_params, headers: auth_headers(personal)
       end.to change(EvolutionPhoto, :count).by(1)
       expect(response).to have_http_status(:created)
       expect(json_body["data"]["taken_on"]).to eq("2025-06-01")
+      expect(json_body["data"]["measurement_id"]).to eq(measurement.id.to_s)
     end
 
-    it "rejects when taken_on is missing" do
+    it "derives taken_on from the measurement date" do
       post "/api/v1/students/#{student.id}/evolution/photos",
-           params: { image_url: "data:image/jpeg;base64,/9j/abc" }, headers: auth_headers(personal)
+           params: valid_params, headers: auth_headers(personal)
+      expect(EvolutionPhoto.last.taken_on.iso8601).to eq("2025-06-01")
+    end
+
+    it "rejects when measurement does not belong to this student" do
+      other_student = create(:student, trainer: trainer)
+      other_measurement = create(:bioimpedance_measurement, student: other_student)
+      post "/api/v1/students/#{student.id}/evolution/photos",
+           params: { bioimpedance_measurement_id: other_measurement.id, image_url: "https://s3.example.com/p.jpg" },
+           headers: auth_headers(personal)
       expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "rejects when the measurement already has a photo" do
+      create(:evolution_photo, bioimpedance_measurement: measurement)
+      post "/api/v1/students/#{student.id}/evolution/photos",
+           params: valid_params, headers: auth_headers(personal)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_body["error"]).to include("já possui uma foto")
     end
 
     it "rejects when image_url is missing" do
       post "/api/v1/students/#{student.id}/evolution/photos",
-           params: { taken_on: "2025-06-01" }, headers: auth_headers(personal)
+           params: { bioimpedance_measurement_id: measurement.id },
+           headers: auth_headers(personal)
       expect(response).to have_http_status(:unprocessable_content)
     end
   end

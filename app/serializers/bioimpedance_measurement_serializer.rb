@@ -4,6 +4,7 @@ class BioimpedanceMeasurementSerializer
   end
 
   def as_json(*)
+    photo = @measurement.evolution_photo
     {
       id: @measurement.id.to_s,
       student_id: @measurement.student_id.to_s,
@@ -13,7 +14,9 @@ class BioimpedanceMeasurementSerializer
       fat_percentage: @measurement.fat_percentage&.to_f,
       visceral_fat: @measurement.visceral_fat&.to_f,
       bmi: @measurement.bmi&.to_f,
-      source: @measurement.source
+      source: @measurement.source,
+      photo_id: photo&.id&.to_s,
+      photo_url: photo&.image_url
     }
   end
 end
