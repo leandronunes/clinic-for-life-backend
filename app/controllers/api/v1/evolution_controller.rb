@@ -2,6 +2,7 @@ module Api
   module V1
     class EvolutionController < BaseController
       include StudentScoped
+      include S3Deletable
 
       # GET /api/v1/students/:student_id/evolution
       def index
@@ -52,16 +53,6 @@ module Api
         photo.destroy!
         delete_from_s3(image_url)
         head :no_content
-      end
-
-      private
-
-      def delete_from_s3(url)
-        return if url.blank?
-
-        S3Presigner.new.delete(public_url: url)
-      rescue StandardError => e
-        Rails.logger.warn("Could not delete S3 object #{url}: #{e.message}")
       end
     end
   end

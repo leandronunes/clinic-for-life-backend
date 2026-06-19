@@ -89,7 +89,10 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
 
   describe "DELETE .../evolution/photos/:id" do
     let(:measurement) { create(:bioimpedance_measurement, student: student) }
-    let!(:photo) { create(:evolution_photo, bioimpedance_measurement: measurement) }
+    let!(:photo) do
+      create(:evolution_photo, bioimpedance_measurement: measurement,
+             image_url: "https://clinic-bucket.s3.us-east-1.amazonaws.com/uploads/photo.jpg")
+    end
 
     before do
       allow_any_instance_of(S3Presigner).to receive(:delete)

@@ -2,6 +2,7 @@ module Api
   module V1
     class ExercisesController < BaseController
       include StudentScoped
+      include S3Deletable
 
       before_action :require_write_access!
       before_action :set_workout
@@ -18,8 +19,10 @@ module Api
       # PATCH/PUT /api/v1/students/:student_id/workouts/:workout_id/exercises/:id
       def update
         exercise = @workout.exercises.find(params[:id])
+        old_video_url = exercise.video_url
         exercise.update!(exercise_params)
         audit!("exercise.update", record: exercise)
+        delete_from_s3(old_video_url) if old_video_url != exercise.video_url
         render_data(ExerciseSerializer.new(exercise).as_json)
       end
 
