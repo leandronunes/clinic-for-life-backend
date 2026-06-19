@@ -1,7 +1,7 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_request!, only: %i[login register]
+      skip_before_action :authenticate_request!, only: %i[login register google_auth]
 
       # POST /api/v1/auth/login
       def login
@@ -44,6 +44,46 @@ module Api
 
         if user.save
           audit!("user.register", record: user)
+          render_data(session_payload(user), status: :created)
+        else
+          render json: { error: user.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
+
+      # POST /api/v1/auth/google
+      # Authenticates via Google OAuth access token. Creates the user account
+      # on first access, applying the same trainer/student association logic as /register.
+      def google_auth
+        userinfo = GoogleAuthService.fetch_userinfo(params[:access_token])
+        return render json: { error: "Token do Google inválido" }, status: :unauthorized unless userinfo
+
+        email = userinfo["email"].to_s.downcase.strip
+        name  = userinfo["name"].to_s.presence || email.split("@").first
+
+        existing = User.find_by("lower(email) = ?", email)
+        if existing
+          existing.update_column(:last_login_at, Time.current)
+          audit!("user.google_login", record: existing)
+          return render_data(session_payload(existing))
+        end
+
+        trainer = Trainer.find_by("lower(email) = ?", email)
+        student = Student.find_by("lower(email) = ?", email)
+        role    = trainer.present? ? "personal" : "student"
+
+        random_password = "#{SecureRandom.hex(16)}Aa1!"
+        user = User.new(
+          name: name,
+          email: email,
+          role: role,
+          trainer: trainer,
+          student: student,
+          password: random_password,
+          password_confirmation: random_password
+        )
+
+        if user.save
+          audit!("user.google_register", record: user)
           render_data(session_payload(user), status: :created)
         else
           render json: { error: user.errors.full_messages }, status: :unprocessable_entity

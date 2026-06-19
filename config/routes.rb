@@ -8,6 +8,7 @@ Rails.application.routes.draw do
       # Authentication
       post "auth/login",    to: "auth#login"
       post "auth/register", to: "auth#register"
+      post "auth/google",   to: "auth#google_auth"
       get  "auth/me",       to: "auth#me"
 
       # Dashboard
