@@ -76,4 +76,41 @@ RSpec.describe "Api::V1::Trainers", type: :request do
       expect(trainer.reload.name).to eq("Renamed")
     end
   end
+
+  describe "DELETE /api/v1/trainers/:id" do
+    it "destroys the trainer as admin and returns 204" do
+      trainer = create(:trainer)
+      expect do
+        delete "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
+      end.to change(Trainer, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "records an audit log on deletion" do
+      trainer = create(:trainer)
+      expect do
+        delete "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
+      end.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("trainer.destroy")
+    end
+
+    it "nullifies associated students' trainer_id instead of cascading" do
+      trainer_record = create(:trainer)
+      student = create(:student, trainer: trainer_record)
+      delete "/api/v1/trainers/#{trainer_record.id}", headers: auth_headers(admin)
+      expect(Student.exists?(student.id)).to be true
+      expect(student.reload.trainer_id).to be_nil
+    end
+
+    it "forbids a personal from deleting a trainer" do
+      trainer_record = create(:trainer)
+      delete "/api/v1/trainers/#{trainer_record.id}", headers: auth_headers(personal)
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "returns 404 for an unknown trainer" do
+      delete "/api/v1/trainers/999999", headers: auth_headers(admin)
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end

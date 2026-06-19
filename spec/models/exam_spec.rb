@@ -24,4 +24,24 @@ RSpec.describe Exam, type: :model do
       expect(exam.uploaded_at).to be_within(1.second).of(timestamp)
     end
   end
+
+  describe "S3 cleanup on destroy" do
+    it "deletes the S3 object when the record is destroyed" do
+      s3_url = "https://clinic-bucket.s3.us-east-1.amazonaws.com/exam.pdf"
+      exam = create(:exam, file_url: s3_url)
+      s3 = instance_double(S3Presigner, delete: nil)
+      allow(S3Presigner).to receive(:new).and_return(s3)
+
+      exam.destroy!
+
+      expect(s3).to have_received(:delete).with(public_url: s3_url)
+    end
+
+    it "does not call S3 for non-S3 URLs" do
+      exam = create(:exam, file_url: "https://example.com/exam.pdf")
+      expect(S3Presigner).not_to receive(:new)
+
+      exam.destroy!
+    end
+  end
 end

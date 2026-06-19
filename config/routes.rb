@@ -19,12 +19,12 @@ Rails.application.routes.draw do
       post "uploads/presign", to: "uploads#presign"
 
       # Trainers (personals)
-      resources :trainers, only: %i[index show create update] do
+      resources :trainers, only: %i[index show create update destroy] do
         collection { get :search }
       end
 
       # Students
-      resources :students, only: %i[index show create update] do
+      resources :students, only: %i[index show create update destroy] do
         # Anamnesis
         resource :anamnesis, only: %i[show update], controller: "anamneses"
 

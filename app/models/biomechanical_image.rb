@@ -1,4 +1,6 @@
 class BiomechanicalImage < ApplicationRecord
+  include S3Deletable
+
   SLOTS = %w[
     frontal
     posterior
@@ -13,4 +15,6 @@ class BiomechanicalImage < ApplicationRecord
   validates :slot, presence: true, inclusion: { in: SLOTS },
                    uniqueness: { scope: :biomechanical_assessment_id }
   validates :image_url, presence: true
+
+  before_destroy { delete_from_s3(image_url) }
 end

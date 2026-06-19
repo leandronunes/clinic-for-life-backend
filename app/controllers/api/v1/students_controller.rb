@@ -1,8 +1,9 @@
 module Api
   module V1
     class StudentsController < BaseController
-      before_action :set_student, only: %i[show update]
+      before_action :set_student, only: %i[show update destroy]
       before_action :require_write_access!, only: %i[create update]
+      before_action -> { require_role!(:admin) }, only: %i[destroy]
 
       # GET /api/v1/students
       def index
@@ -42,6 +43,13 @@ module Api
         @student.update!(student_params)
         audit!("student.update", record: @student)
         render_data(StudentSerializer.new(@student).as_json)
+      end
+
+      # DELETE /api/v1/students/:id
+      def destroy
+        audit!("student.destroy", record: @student)
+        @student.destroy!
+        head :no_content
       end
 
       private

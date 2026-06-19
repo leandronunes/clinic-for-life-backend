@@ -1,7 +1,7 @@
 module Api
   module V1
     class TrainersController < BaseController
-      before_action :require_admin_for_write, only: %i[create update]
+      before_action :require_admin_for_write, only: %i[create update destroy]
 
       # GET /api/v1/trainers
       def index
@@ -44,6 +44,14 @@ module Api
         trainer.update!(trainer_params)
         audit!("trainer.update", record: trainer)
         render_data(TrainerSerializer.new(trainer).as_json)
+      end
+
+      # DELETE /api/v1/trainers/:id
+      def destroy
+        trainer = Trainer.find(params[:id])
+        audit!("trainer.destroy", record: trainer)
+        trainer.destroy!
+        head :no_content
       end
 
       private

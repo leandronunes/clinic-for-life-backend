@@ -87,4 +87,42 @@ RSpec.describe "Api::V1::Students", type: :request do
       expect(student.reload.name).to eq("Renamed")
     end
   end
+
+  describe "DELETE /api/v1/students/:id" do
+    it "destroys the student as admin and returns 204" do
+      student = create(:student)
+      expect do
+        delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
+      end.to change(Student, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "records an audit log on deletion" do
+      student = create(:student)
+      expect do
+        delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
+      end.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("student.destroy")
+    end
+
+    it "forbids a personal from deleting a student" do
+      student = create(:student, trainer: trainer)
+      delete "/api/v1/students/#{student.id}", headers: auth_headers(personal)
+      expect(response).to have_http_status(:forbidden)
+      expect(Student.exists?(student.id)).to be true
+    end
+
+    it "returns 404 for an unknown student" do
+      delete "/api/v1/students/999999", headers: auth_headers(admin)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "cascades deletion to associated exams" do
+      student = create(:student)
+      create(:exam, student: student)
+      expect do
+        delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
+      end.to change(Exam, :count).by(-1)
+    end
+  end
 end
