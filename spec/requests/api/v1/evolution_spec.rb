@@ -87,6 +87,63 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
     end
   end
 
+  describe "DELETE .../evolution/photos/:id" do
+    let(:measurement) { create(:bioimpedance_measurement, student: student) }
+    let!(:photo) { create(:evolution_photo, bioimpedance_measurement: measurement) }
+
+    before do
+      allow_any_instance_of(S3Presigner).to receive(:delete)
+    end
+
+    it "deletes the photo record and returns 204" do
+      expect do
+        delete "/api/v1/students/#{student.id}/evolution/photos/#{photo.id}",
+               headers: auth_headers(personal)
+      end.to change(EvolutionPhoto, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "calls S3Presigner to remove the S3 object" do
+      presigner = instance_double(S3Presigner)
+      allow(S3Presigner).to receive(:new).and_return(presigner)
+      allow(presigner).to receive(:delete)
+
+      delete "/api/v1/students/#{student.id}/evolution/photos/#{photo.id}",
+             headers: auth_headers(personal)
+
+      expect(presigner).to have_received(:delete).with(public_url: photo.image_url)
+    end
+
+    it "returns 204 even when S3 deletion raises an error" do
+      allow_any_instance_of(S3Presigner).to receive(:delete).and_raise(Aws::S3::Errors::NoSuchKey.new({}, ""))
+
+      delete "/api/v1/students/#{student.id}/evolution/photos/#{photo.id}",
+             headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "returns 404 when photo does not belong to this student" do
+      other_student = create(:student, trainer: trainer)
+      other_measurement = create(:bioimpedance_measurement, student: other_student)
+      other_photo = create(:evolution_photo, bioimpedance_measurement: other_measurement)
+      delete "/api/v1/students/#{student.id}/evolution/photos/#{other_photo.id}",
+             headers: auth_headers(personal)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 404 for a non-existent photo id" do
+      delete "/api/v1/students/#{student.id}/evolution/photos/0",
+             headers: auth_headers(personal)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 401 for unauthenticated requests" do
+      delete "/api/v1/students/#{student.id}/evolution/photos/#{photo.id}"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST .../bioimpedance_measurements" do
     it "creates a manual measurement" do
       expect do

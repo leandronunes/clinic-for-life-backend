@@ -64,6 +64,12 @@ class S3Presigner
     { upload_url: upload_url, public_url: public_url }
   end
 
+  # Deletes an object from S3 identified by its public URL.
+  def delete(public_url:)
+    key = extract_key(public_url)
+    s3_client.delete_object(bucket: bucket, key: key)
+  end
+
   private
 
   def validate!(content_type:, context:)
@@ -78,8 +84,18 @@ class S3Presigner
     end
   end
 
+  def extract_key(url)
+    URI.parse(url).path.delete_prefix("/")
+  rescue URI::InvalidURIError
+    raise InvalidParamsError, "Invalid URL: #{url}"
+  end
+
+  def s3_client
+    @s3_client ||= Aws::S3::Client.new(region: region)
+  end
+
   def presigner
-    @presigner ||= Aws::S3::Presigner.new(client: Aws::S3::Client.new(region: region))
+    @presigner ||= Aws::S3::Presigner.new(client: s3_client)
   end
 
   def bucket

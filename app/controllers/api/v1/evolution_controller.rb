@@ -44,6 +44,25 @@ module Api
           render json: { error: photo.errors.full_messages }, status: :unprocessable_content
         end
       end
+
+      # DELETE /api/v1/students/:student_id/evolution/photos/:id
+      def destroy_photo
+        photo = @student.evolution_photos.find(params[:id])
+        image_url = photo.image_url
+        photo.destroy!
+        delete_from_s3(image_url)
+        head :no_content
+      end
+
+      private
+
+      def delete_from_s3(url)
+        return if url.blank?
+
+        S3Presigner.new.delete(public_url: url)
+      rescue StandardError => e
+        Rails.logger.warn("Could not delete S3 object #{url}: #{e.message}")
+      end
     end
   end
 end
