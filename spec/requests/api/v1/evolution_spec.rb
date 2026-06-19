@@ -23,6 +23,31 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
     end
   end
 
+  describe "POST .../evolution/photos" do
+    let(:valid_params) { { taken_on: "2025-06-01", image_url: "data:image/jpeg;base64,/9j/abc" } }
+
+    it "creates an evolution photo and returns 201" do
+      expect do
+        post "/api/v1/students/#{student.id}/evolution/photos",
+             params: valid_params, headers: auth_headers(personal)
+      end.to change(EvolutionPhoto, :count).by(1)
+      expect(response).to have_http_status(:created)
+      expect(json_body["data"]["taken_on"]).to eq("2025-06-01")
+    end
+
+    it "rejects when taken_on is missing" do
+      post "/api/v1/students/#{student.id}/evolution/photos",
+           params: { image_url: "data:image/jpeg;base64,/9j/abc" }, headers: auth_headers(personal)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "rejects when image_url is missing" do
+      post "/api/v1/students/#{student.id}/evolution/photos",
+           params: { taken_on: "2025-06-01" }, headers: auth_headers(personal)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
   describe "POST .../bioimpedance_measurements" do
     it "creates a manual measurement" do
       expect do

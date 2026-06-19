@@ -42,8 +42,9 @@ Rails.application.routes.draw do
         end
 
         # Evolution
-        get "evolution",        to: "evolution#index"
-        get "evolution/photos", to: "evolution#photos"
+        get  "evolution",        to: "evolution#index"
+        get  "evolution/photos", to: "evolution#photos"
+        post "evolution/photos", to: "evolution#create_photo"
 
         # Bioimpedance measurements
         resources :bioimpedance_measurements, only: %i[index create]
