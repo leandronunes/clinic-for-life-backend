@@ -7,8 +7,8 @@ RSpec.describe "Api::V1::Uploads", type: :request do
   let(:student)      { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
 
-  let(:fake_upload_url) { "https://clinic-for-life.s3.us-west-2.amazonaws.com/uploads/exercise_video/uuid.mp4?X-Amz-Signature=abc" }
-  let(:fake_public_url) { "https://clinic-for-life.s3.us-west-2.amazonaws.com/uploads/exercise_video/uuid.mp4" }
+  let(:fake_upload_url) { "https://clinic-for-life.s3.us-west-2.amazonaws.com/uploads/students/#{student.id}/exercise_video/uuid.mp4?X-Amz-Signature=abc" }
+  let(:fake_public_url) { "https://clinic-for-life.s3.us-west-2.amazonaws.com/uploads/students/#{student.id}/exercise_video/uuid.mp4" }
   let(:presign_result)  { { upload_url: fake_upload_url, public_url: fake_public_url } }
 
   before do
@@ -16,7 +16,7 @@ RSpec.describe "Api::V1::Uploads", type: :request do
   end
 
   describe "POST /api/v1/uploads/presign" do
-    let(:valid_params) { { content_type: "video/mp4", context: "exercise_video" } }
+    let(:valid_params) { { content_type: "video/mp4", context: "exercise_video", student_id: student.id } }
 
     it "returns presigned URL for a personal trainer" do
       post "/api/v1/uploads/presign", params: valid_params, headers: auth_headers(personal)
@@ -27,7 +27,7 @@ RSpec.describe "Api::V1::Uploads", type: :request do
 
     it "returns presigned URL for evolution_photo context with image/jpeg" do
       post "/api/v1/uploads/presign",
-           params: { content_type: "image/jpeg", context: "evolution_photo" },
+           params: { content_type: "image/jpeg", context: "evolution_photo", student_id: student.id },
            headers: auth_headers(personal)
 
       expect(response).to have_http_status(:ok)
@@ -36,7 +36,7 @@ RSpec.describe "Api::V1::Uploads", type: :request do
 
     it "returns presigned URL for biomechanical_image context with image/jpeg" do
       post "/api/v1/uploads/presign",
-           params: { content_type: "image/jpeg", context: "biomechanical_image" },
+           params: { content_type: "image/jpeg", context: "biomechanical_image", student_id: student.id },
            headers: auth_headers(personal)
 
       expect(response).to have_http_status(:ok)
@@ -56,22 +56,39 @@ RSpec.describe "Api::V1::Uploads", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "allows students to presign for the exam context" do
+    it "allows students to presign for the exam context on their own record" do
       post "/api/v1/uploads/presign",
-           params: { content_type: "application/pdf", context: "exam" },
+           params: { content_type: "application/pdf", context: "exam", student_id: student.id },
            headers: auth_headers(student_user)
 
       expect(response).to have_http_status(:ok)
       expect(json_body["data"]).to include("upload_url", "public_url")
     end
 
+    it "forbids students from presigning exam for another student" do
+      other_student = create(:student, trainer: trainer)
+      post "/api/v1/uploads/presign",
+           params: { content_type: "application/pdf", context: "exam", student_id: other_student.id },
+           headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
     it "returns presigned URL for exam context with application/pdf" do
       post "/api/v1/uploads/presign",
-           params: { content_type: "application/pdf", context: "exam" },
+           params: { content_type: "application/pdf", context: "exam", student_id: student.id },
            headers: auth_headers(personal)
 
       expect(response).to have_http_status(:ok)
       expect(json_body["data"]).to include("upload_url", "public_url")
+    end
+
+    it "returns 404 for unknown student_id" do
+      post "/api/v1/uploads/presign",
+           params: { content_type: "video/mp4", context: "exercise_video", student_id: 0 },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:not_found)
     end
 
     it "requires authentication" do
@@ -85,7 +102,7 @@ RSpec.describe "Api::V1::Uploads", type: :request do
 
       it "returns 422 for disallowed content type" do
         post "/api/v1/uploads/presign",
-             params: { content_type: "application/octet-stream", context: "exercise_video" },
+             params: { content_type: "application/octet-stream", context: "exercise_video", student_id: student.id },
              headers: auth_headers(personal)
 
         expect(response).to have_http_status(:unprocessable_content)
@@ -94,7 +111,7 @@ RSpec.describe "Api::V1::Uploads", type: :request do
 
       it "returns 422 for unknown context" do
         post "/api/v1/uploads/presign",
-             params: { content_type: "video/mp4", context: "unknown_context" },
+             params: { content_type: "video/mp4", context: "unknown_context", student_id: student.id },
              headers: auth_headers(personal)
 
         expect(response).to have_http_status(:unprocessable_content)

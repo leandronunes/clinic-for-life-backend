@@ -43,13 +43,13 @@ class S3Presigner
   ConfigurationError = Class.new(StandardError)
   InvalidParamsError = Class.new(ArgumentError)
 
-  def presign(content_type:, context:)
+  def presign(content_type:, context:, student_id:)
     validate!(content_type:, context:)
 
     # Use only the base MIME type (strips codecs/params) for extension lookup and presigning
     mime = content_type.to_s.split(";").first.to_s.strip
     ext = EXTENSION_FOR.fetch(mime, "mp4")
-    key = "uploads/#{context}/#{SecureRandom.uuid}.#{ext}"
+    key = "uploads/students/#{student_id}/#{context}/#{SecureRandom.uuid}.#{ext}"
 
     upload_url = presigner.presigned_url(
       :put_object,
