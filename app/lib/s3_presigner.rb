@@ -8,7 +8,7 @@ require "aws-sdk-s3"
 # Optional:
 #   S3_PRESIGN_EXPIRY  — seconds the presigned URL stays valid (default 600)
 class S3Presigner
-  ALLOWED_CONTEXTS = %w[exercise_video].freeze
+  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo].freeze
 
   ALLOWED_CONTENT_TYPES = %w[
     video/mp4
@@ -17,6 +17,11 @@ class S3Presigner
     video/x-msvideo
     video/mpeg
     video/ogg
+    image/jpeg
+    image/png
+    image/webp
+    image/heic
+    image/heif
   ].freeze
 
   EXTENSION_FOR = {
@@ -25,7 +30,12 @@ class S3Presigner
     "video/quicktime" => "mov",
     "video/x-msvideo" => "avi",
     "video/mpeg"      => "mpeg",
-    "video/ogg"       => "ogv"
+    "video/ogg"       => "ogv",
+    "image/jpeg"      => "jpg",
+    "image/png"       => "png",
+    "image/webp"      => "webp",
+    "image/heic"      => "heic",
+    "image/heif"      => "heif"
   }.freeze
 
   ConfigurationError = Class.new(StandardError)

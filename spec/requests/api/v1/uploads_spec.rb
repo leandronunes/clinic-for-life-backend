@@ -25,6 +25,15 @@ RSpec.describe "Api::V1::Uploads", type: :request do
       expect(json_body["data"]).to include("upload_url" => fake_upload_url, "public_url" => fake_public_url)
     end
 
+    it "returns presigned URL for evolution_photo context with image/jpeg" do
+      post "/api/v1/uploads/presign",
+           params: { content_type: "image/jpeg", context: "evolution_photo" },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]).to include("upload_url", "public_url")
+    end
+
     it "returns presigned URL for an admin" do
       post "/api/v1/uploads/presign", params: valid_params, headers: auth_headers(admin)
 
