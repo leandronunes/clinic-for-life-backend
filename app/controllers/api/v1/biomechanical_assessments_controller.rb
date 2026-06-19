@@ -2,6 +2,7 @@ module Api
   module V1
     class BiomechanicalAssessmentsController < BaseController
       include StudentScoped
+      include S3Deletable
 
       before_action :require_write_access!, only: %i[new_assessment upload remove_image]
 
@@ -33,8 +34,10 @@ module Api
 
         assessment = current_assessment
         image = assessment.biomechanical_images.find_or_initialize_by(slot: slot)
+        old_image_url = image.image_url
         image.image_url = params.require(:image_url)
         image.save!
+        delete_from_s3(old_image_url) if old_image_url != image.image_url
         audit!("biomechanical_assessment.upload", record: assessment, metadata: { slot: slot })
         render_data(BiomechanicalAssessmentSerializer.new(assessment.reload).as_json)
       end
