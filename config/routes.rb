@@ -6,8 +6,9 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       # Authentication
-      post "auth/login", to: "auth#login"
-      get  "auth/me",    to: "auth#me"
+      post "auth/login",    to: "auth#login"
+      post "auth/register", to: "auth#register"
+      get  "auth/me",       to: "auth#me"
 
       # Dashboard
       get "dashboard/kpis",     to: "dashboard#kpis"
