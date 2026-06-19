@@ -15,6 +15,9 @@ Rails.application.routes.draw do
       get "dashboard/kpis",     to: "dashboard#kpis"
       get "dashboard/activity", to: "dashboard#activity"
 
+      # Uploads — presigned S3 URLs
+      post "uploads/presign", to: "uploads#presign"
+
       # Trainers (personals)
       resources :trainers, only: %i[index show create update] do
         collection { get :search }
