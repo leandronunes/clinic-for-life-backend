@@ -4,7 +4,7 @@ require "rack/test"
 RSpec.describe "Api::V1::BioimpedanceImports", type: :request do
   let(:trainer) { create(:trainer) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
-  let!(:student) { create(:student, trainer: trainer, email: "julia@email.com", height_cm: 170) }
+  let!(:student) { create(:student, trainer: trainer, email: "julia@email.com") }
 
   def csv_upload(content)
     file = Tempfile.new([ "bio", ".csv" ])

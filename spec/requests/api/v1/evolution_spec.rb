@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
   let(:trainer) { create(:trainer) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
-  let(:student) { create(:student, trainer: trainer, height_cm: 170) }
+  let(:student) { create(:student, trainer: trainer) }
 
   describe "GET .../evolution" do
     it "returns measurements ordered by date" do

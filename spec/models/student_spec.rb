@@ -21,18 +21,6 @@ RSpec.describe Student, type: :model do
     it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
     it { is_expected.to validate_inclusion_of(:sex).in_array(Student::SEXES) }
     it { is_expected.to validate_inclusion_of(:status).in_array(Student::STATUSES) }
-
-    it "rejects a non-positive height" do
-      expect(build(:student, height_cm: 0)).not_to be_valid
-    end
-
-    it "rejects an unrealistic height" do
-      expect(build(:student, height_cm: 400)).not_to be_valid
-    end
-
-    it "allows a nil height" do
-      expect(build(:student, height_cm: nil)).to be_valid
-    end
   end
 
   describe "email normalization" do

@@ -41,21 +41,14 @@ RSpec.describe BioimpedanceMeasurement, type: :model do
     end
   end
 
-  describe "BMI computation" do
-    it "derives the BMI from weight and student height when blank" do
-      student = create(:student, height_cm: 170)
-      measurement = create(:bioimpedance_measurement, student: student, weight_kg: 70, bmi: nil)
-      expect(measurement.bmi).to eq(24.22)
-    end
-
-    it "keeps a provided BMI untouched" do
+  describe "BMI" do
+    it "stores a provided BMI value" do
       measurement = create(:bioimpedance_measurement, bmi: 30)
       expect(measurement.bmi).to eq(30)
     end
 
-    it "does not compute the BMI when student height is missing" do
-      student = create(:student, height_cm: nil)
-      measurement = create(:bioimpedance_measurement, student: student, weight_kg: 70, bmi: nil)
+    it "allows a nil BMI" do
+      measurement = create(:bioimpedance_measurement, bmi: nil)
       expect(measurement.bmi).to be_nil
     end
   end

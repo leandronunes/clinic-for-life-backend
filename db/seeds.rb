@@ -44,12 +44,12 @@ ActiveRecord::Base.transaction do
   # Students
   # ---------------------------------------------------------------------------
   students_data = [
-    { name: "Julia Ferreira",  birth_date: "1996-05-12", sex: "female", height_cm: 168, email: "julia@email.com", phone: "(11) 97777-1010", trainer: "Rafael Monteiro", status: "active" },
-    { name: "Pedro Augusto",   birth_date: "1989-11-03", sex: "male",   height_cm: 182, email: "pedro@email.com", phone: "(11) 97777-2020", trainer: "Rafael Monteiro", status: "active" },
-    { name: "Ana Carolina",    birth_date: "1992-02-28", sex: "female", height_cm: 165, email: "ana@email.com",   phone: "(11) 97777-3030", trainer: "Beatriz Lima",    status: "active" },
-    { name: "Lucas Pereira",   birth_date: "2000-07-21", sex: "male",   height_cm: 178, email: "lucas@email.com", phone: "(11) 97777-4040", trainer: "Beatriz Lima",    status: "inactive" },
-    { name: "Mariana Costa",   birth_date: "1985-12-09", sex: "female", height_cm: 170, email: "mari@email.com",  phone: "(11) 97777-5050", trainer: "Rafael Monteiro", status: "active" },
-    { name: "Rodrigo Alves",   birth_date: "1978-03-17", sex: "male",   height_cm: 175, email: "rod@email.com",   phone: "(11) 97777-6060", trainer: "Carlos Eduardo",  status: "active" }
+    { name: "Julia Ferreira",  birth_date: "1996-05-12", sex: "female", email: "julia@email.com", phone: "(11) 97777-1010", trainer: "Rafael Monteiro", status: "active" },
+    { name: "Pedro Augusto",   birth_date: "1989-11-03", sex: "male",   email: "pedro@email.com", phone: "(11) 97777-2020", trainer: "Rafael Monteiro", status: "active" },
+    { name: "Ana Carolina",    birth_date: "1992-02-28", sex: "female", email: "ana@email.com",   phone: "(11) 97777-3030", trainer: "Beatriz Lima",    status: "active" },
+    { name: "Lucas Pereira",   birth_date: "2000-07-21", sex: "male",   email: "lucas@email.com", phone: "(11) 97777-4040", trainer: "Beatriz Lima",    status: "inactive" },
+    { name: "Mariana Costa",   birth_date: "1985-12-09", sex: "female", email: "mari@email.com",  phone: "(11) 97777-5050", trainer: "Rafael Monteiro", status: "active" },
+    { name: "Rodrigo Alves",   birth_date: "1978-03-17", sex: "male",   email: "rod@email.com",   phone: "(11) 97777-6060", trainer: "Carlos Eduardo",  status: "active" }
   ]
 
   students = students_data.each_with_object({}) do |attrs, acc|
@@ -58,7 +58,6 @@ ActiveRecord::Base.transaction do
       s.name = attrs[:name]
       s.birth_date = attrs[:birth_date]
       s.sex = attrs[:sex]
-      s.height_cm = attrs[:height_cm]
       s.phone = attrs[:phone]
       s.trainer = trainer
       s.status = attrs[:status]

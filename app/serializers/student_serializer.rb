@@ -9,7 +9,6 @@ class StudentSerializer
       name: @student.name,
       birth_date: @student.birth_date&.iso8601,
       sex: @student.sex,
-      height_cm: @student.height_cm,
       email: @student.email,
       phone: @student.phone,
       trainer_id: @student.trainer_id&.to_s,

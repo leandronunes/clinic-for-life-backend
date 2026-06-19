@@ -17,8 +17,6 @@ class Student < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :sex, presence: true, inclusion: { in: SEXES }
   validates :status, presence: true, inclusion: { in: STATUSES }
-  validates :height_cm, numericality: { greater_than: 0, less_than: 300 }, allow_nil: true
-
   before_validation { self.email = email.to_s.downcase.strip }
 
   def trainer_name
