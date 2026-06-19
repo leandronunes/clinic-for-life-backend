@@ -8,7 +8,7 @@ require "aws-sdk-s3"
 # Optional:
 #   S3_PRESIGN_EXPIRY  — seconds the presigned URL stays valid (default 600)
 class S3Presigner
-  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image].freeze
+  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image exam].freeze
 
   ALLOWED_CONTENT_TYPES = %w[
     video/mp4
@@ -22,6 +22,7 @@ class S3Presigner
     image/webp
     image/heic
     image/heif
+    application/pdf
   ].freeze
 
   EXTENSION_FOR = {
@@ -35,7 +36,8 @@ class S3Presigner
     "image/png"       => "png",
     "image/webp"      => "webp",
     "image/heic"      => "heic",
-    "image/heif"      => "heif"
+    "image/heif"      => "heif",
+    "application/pdf" => "pdf"
   }.freeze
 
   ConfigurationError = Class.new(StandardError)

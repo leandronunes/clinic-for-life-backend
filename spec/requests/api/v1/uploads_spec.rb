@@ -50,10 +50,28 @@ RSpec.describe "Api::V1::Uploads", type: :request do
       expect(json_body["data"]).to include("upload_url", "public_url")
     end
 
-    it "forbids students from generating presigned URLs" do
+    it "forbids students from presigning non-exam contexts" do
       post "/api/v1/uploads/presign", params: valid_params, headers: auth_headers(student_user)
 
       expect(response).to have_http_status(:forbidden)
+    end
+
+    it "allows students to presign for the exam context" do
+      post "/api/v1/uploads/presign",
+           params: { content_type: "application/pdf", context: "exam" },
+           headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]).to include("upload_url", "public_url")
+    end
+
+    it "returns presigned URL for exam context with application/pdf" do
+      post "/api/v1/uploads/presign",
+           params: { content_type: "application/pdf", context: "exam" },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]).to include("upload_url", "public_url")
     end
 
     it "requires authentication" do
@@ -65,9 +83,9 @@ RSpec.describe "Api::V1::Uploads", type: :request do
     context "with invalid content type" do
       before { allow_any_instance_of(S3Presigner).to receive(:presign).and_call_original }
 
-      it "returns 422 for non-video content type" do
+      it "returns 422 for disallowed content type" do
         post "/api/v1/uploads/presign",
-             params: { content_type: "application/pdf", context: "exercise_video" },
+             params: { content_type: "application/octet-stream", context: "exercise_video" },
              headers: auth_headers(personal)
 
         expect(response).to have_http_status(:unprocessable_content)

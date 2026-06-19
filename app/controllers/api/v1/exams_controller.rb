@@ -3,7 +3,9 @@ module Api
     class ExamsController < BaseController
       include StudentScoped
 
-      before_action :require_write_access!, only: %i[create destroy]
+      # Students may manage their own exams; authorization is enforced by
+      # authorize_student! (via StudentScoped), so no additional role guard needed.
+
 
       # GET /api/v1/students/:student_id/exams
       def index

@@ -11,10 +11,6 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2026_06_19_000001) do
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "pg_catalog.plpgsql"
-  enable_extension "pgcrypto"
-
   create_table "anamneses", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "diastolic_pressure"
@@ -47,7 +43,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000001) do
     t.datetime "created_at", null: false
     t.string "ip_address"
     t.string "justification"
-    t.jsonb "metadata", default: {}, null: false
+    t.json "metadata", default: {}, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable_type_and_auditable_id"
@@ -56,7 +52,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000001) do
 
   create_table "bioimpedance_imports", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.jsonb "errors_log", default: [], null: false
+    t.json "errors_log", default: [], null: false
     t.string "filename", null: false
     t.integer "imported_count", default: 0, null: false
     t.integer "total_rows", default: 0, null: false

@@ -23,9 +23,18 @@ RSpec.describe "Api::V1::Exams", type: :request do
       expect(response).to have_http_status(:created)
     end
 
-    it "forbids a student from uploading" do
-      params = { name: "Blood", file_url: "https://example.com/e.pdf" }
-      post "/api/v1/students/#{student.id}/exams", params: params, headers: auth_headers(student_user)
+    it "allows a student to upload their own exam" do
+      params = { name: "Blood", file_url: "https://s3.amazonaws.com/bucket/exam.pdf", content_type: "application/pdf" }
+      expect do
+        post "/api/v1/students/#{student.id}/exams", params: params, headers: auth_headers(student_user)
+      end.to change(Exam, :count).by(1)
+      expect(response).to have_http_status(:created)
+    end
+
+    it "forbids a student from uploading exams for another student" do
+      other_student = create(:student, trainer: trainer)
+      params = { name: "Blood", file_url: "https://s3.amazonaws.com/bucket/exam.pdf", content_type: "application/pdf" }
+      post "/api/v1/students/#{other_student.id}/exams", params: params, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
     end
   end
