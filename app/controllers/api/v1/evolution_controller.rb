@@ -49,9 +49,7 @@ module Api
       # DELETE /api/v1/students/:student_id/evolution/photos/:id
       def destroy_photo
         photo = @student.evolution_photos.find(params[:id])
-        image_url = photo.image_url
         photo.destroy!
-        delete_from_s3(image_url)
         head :no_content
       end
     end

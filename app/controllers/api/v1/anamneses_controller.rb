@@ -30,7 +30,7 @@ module Api
       def sync_external_professionals(anamnesis)
         return unless params.key?(:external_professionals)
 
-        entries = params.fetch(:external_professionals, [])
+        entries = Array.wrap(params[:external_professionals])
         anamnesis.external_professionals.destroy_all
         entries.each do |entry|
           permitted = entry.permit(:name, :specialty, :objective)
