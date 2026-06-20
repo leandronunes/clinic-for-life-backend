@@ -124,5 +124,16 @@ RSpec.describe "Api::V1::Students", type: :request do
         delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
       end.to change(Exam, :count).by(-1)
     end
+
+    it "deletes the student even when bioimpedance measurements have linked evolution photos" do
+      student = create(:student)
+      measurement = create(:bioimpedance_measurement, student: student)
+      create(:evolution_photo, student: student, bioimpedance_measurement: measurement)
+
+      expect do
+        delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
+      end.to change(Student, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
   end
 end

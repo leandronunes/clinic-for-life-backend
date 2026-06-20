@@ -41,6 +41,15 @@ RSpec.describe BioimpedanceMeasurement, type: :model do
     end
   end
 
+  describe "dependent: :destroy on evolution_photo" do
+    it "destroys the linked evolution_photo when destroyed" do
+      photo = create(:evolution_photo)
+      measurement = photo.bioimpedance_measurement
+
+      expect { measurement.destroy! }.to change(EvolutionPhoto, :count).by(-1)
+    end
+  end
+
   describe "BMI" do
     it "stores a provided BMI value" do
       measurement = create(:bioimpedance_measurement, bmi: 30)

@@ -1,6 +1,6 @@
 class BioimpedanceMeasurement < ApplicationRecord
   belongs_to :student
-  has_one :evolution_photo
+  has_one :evolution_photo, dependent: :destroy
 
   validates :weight_kg, presence: true,
                         numericality: { greater_than: 0 }
