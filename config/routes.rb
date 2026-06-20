@@ -48,7 +48,7 @@ Rails.application.routes.draw do
         delete "evolution/photos/:id",  to: "evolution#destroy_photo"
 
         # Bioimpedance measurements
-        resources :bioimpedance_measurements, only: %i[index create]
+        resources :bioimpedance_measurements, only: %i[index create destroy]
 
         # Workouts and exercises
         resources :workouts, only: %i[index create update] do

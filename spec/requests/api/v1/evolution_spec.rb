@@ -171,4 +171,48 @@ RSpec.describe "Api::V1::Evolution & Bioimpedance", type: :request do
       expect(json_body["data"].size).to eq(1)
     end
   end
+
+  describe "DELETE .../bioimpedance_measurements/:id" do
+    let!(:measurement) { create(:bioimpedance_measurement, student: student) }
+
+    before { allow_any_instance_of(S3Presigner).to receive(:delete) }
+
+    it "destroys the measurement and returns 204" do
+      expect do
+        delete "/api/v1/students/#{student.id}/bioimpedance_measurements/#{measurement.id}",
+               headers: auth_headers(personal)
+      end.to change(BioimpedanceMeasurement, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "also destroys the linked evolution photo" do
+      create(:evolution_photo, bioimpedance_measurement: measurement,
+             image_url: "https://clinic-bucket.s3.us-east-1.amazonaws.com/photo.jpg")
+      expect do
+        delete "/api/v1/students/#{student.id}/bioimpedance_measurements/#{measurement.id}",
+               headers: auth_headers(personal)
+      end.to change(EvolutionPhoto, :count).by(-1)
+    end
+
+    it "records an audit log" do
+      delete "/api/v1/students/#{student.id}/bioimpedance_measurements/#{measurement.id}",
+             headers: auth_headers(personal)
+      expect(AuditLog.last.action).to eq("bioimpedance_measurement.destroy")
+    end
+
+    it "returns 404 for a measurement that does not belong to this student" do
+      other = create(:student, trainer: trainer)
+      other_measurement = create(:bioimpedance_measurement, student: other)
+      delete "/api/v1/students/#{student.id}/bioimpedance_measurements/#{other_measurement.id}",
+             headers: auth_headers(personal)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 403 for a student user" do
+      student_user = create(:user, :student_account, student: student)
+      delete "/api/v1/students/#{student.id}/bioimpedance_measurements/#{measurement.id}",
+             headers: auth_headers(student_user)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
 end
