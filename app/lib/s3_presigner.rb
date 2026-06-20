@@ -49,7 +49,7 @@ class S3Presigner
     # Use only the base MIME type (strips codecs/params) for extension lookup and presigning
     mime = content_type.to_s.split(";").first.to_s.strip
     ext = EXTENSION_FOR.fetch(mime, "mp4")
-    key = "uploads/students/#{student_id}/#{context}/#{SecureRandom.uuid}.#{ext}"
+    key = "#{env_prefix}uploads/students/#{student_id}/#{context}/#{SecureRandom.uuid}.#{ext}"
 
     upload_url = presigner.presigned_url(
       :put_object,
@@ -108,5 +108,9 @@ class S3Presigner
 
   def expiry
     ENV.fetch("S3_PRESIGN_EXPIRY", "600").to_i
+  end
+
+  def env_prefix
+    Rails.env.development? ? "dev/" : ""
   end
 end
