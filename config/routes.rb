@@ -52,7 +52,10 @@ Rails.application.routes.draw do
 
         # Workouts and exercises
         resources :workouts, only: %i[index create update] do
-          member { post :archive }
+          member do
+            post :archive
+            post :unarchive
+          end
           resources :exercises, only: %i[create update destroy] do
             collection { patch :reorder }
           end

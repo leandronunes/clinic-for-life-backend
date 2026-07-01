@@ -3,7 +3,7 @@ module Api
     class WorkoutsController < BaseController
       include StudentScoped
 
-      before_action :require_write_access!, only: %i[create update archive]
+      before_action :require_write_access!, only: %i[create update archive unarchive]
 
       # GET /api/v1/students/:student_id/workouts
       def index
@@ -42,6 +42,17 @@ module Api
         workout = @student.workouts.find(params[:id])
         workout.archive!
         audit!("workout.archive", record: workout)
+        render_data(WorkoutSerializer.new(workout).as_json)
+      end
+
+      # POST /api/v1/students/:student_id/workouts/:id/unarchive
+      def unarchive
+        workout = @student.workouts.find(params[:id])
+        unless workout.archived?
+          return render json: { error: "Treino não está arquivado" }, status: :unprocessable_content
+        end
+        workout.unarchive!
+        audit!("workout.unarchive", record: workout)
         render_data(WorkoutSerializer.new(workout).as_json)
       end
 

@@ -38,6 +38,25 @@ RSpec.describe Workout, type: :model do
     end
   end
 
+  describe "#unarchive!" do
+    it "marks the workout as active and clears archived_at" do
+      workout = create(:workout, :archived)
+      workout.unarchive!
+      expect(workout.status).to eq("active")
+      expect(workout.archived_at).to be_nil
+    end
+  end
+
+  describe "#archived?" do
+    it "returns true when status is archived" do
+      expect(build(:workout, :archived).archived?).to be true
+    end
+
+    it "returns false when status is active" do
+      expect(build(:workout, status: "active").archived?).to be false
+    end
+  end
+
   describe "ordered exercises association" do
     it "returns exercises ordered by position" do
       workout = create(:workout)

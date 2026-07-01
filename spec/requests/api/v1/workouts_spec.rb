@@ -72,4 +72,40 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       expect(workout.reload.status).to eq("archived")
     end
   end
+
+  describe "POST /api/v1/students/:student_id/workouts/:id/unarchive" do
+    it "reactivates an archived workout" do
+      workout = create(:workout, :archived, student: student)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/unarchive",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(workout.reload.status).to eq("active")
+      expect(workout.reload.archived_at).to be_nil
+    end
+
+    it "returns the updated workout in the response" do
+      workout = create(:workout, :archived, student: student)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/unarchive",
+           headers: auth_headers(personal)
+
+      expect(json_body["data"]["status"]).to eq("active")
+    end
+
+    it "returns 422 when the workout is already active" do
+      workout = create(:workout, student: student, status: "active")
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/unarchive",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "forbids a student from unarchiving" do
+      workout = create(:workout, :archived, student: student)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/unarchive",
+           headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
 end

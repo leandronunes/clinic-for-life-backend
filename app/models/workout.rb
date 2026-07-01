@@ -10,7 +10,15 @@ class Workout < ApplicationRecord
   scope :active, -> { where(status: "active") }
   scope :archived, -> { where(status: "archived") }
 
+  def archived?
+    status == "archived"
+  end
+
   def archive!
     update!(status: "archived", archived_at: Time.current)
+  end
+
+  def unarchive!
+    update!(status: "active", archived_at: nil)
   end
 end
