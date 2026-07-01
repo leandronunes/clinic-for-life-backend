@@ -56,6 +56,7 @@ Rails.application.routes.draw do
             post :archive
             post :unarchive
           end
+          collection { patch :reorder }
           resources :exercises, only: %i[create update destroy] do
             collection { patch :reorder }
           end

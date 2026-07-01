@@ -35,6 +35,13 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       expect(response).to have_http_status(:created)
     end
 
+    it "auto-assigns sequential positions for new workouts" do
+      create(:workout, student: student, status: "active", position: 1)
+      post "/api/v1/students/#{student.id}/workouts",
+           params: { title: "Segundo Treino", focus: "Pull" }, headers: auth_headers(personal)
+      expect(json_body["data"]["position"]).to eq(2)
+    end
+
     it "allows multiple active workouts to coexist" do
       old = create(:workout, student: student, status: "active")
       post "/api/v1/students/#{student.id}/workouts",
@@ -104,6 +111,55 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       workout = create(:workout, :archived, student: student)
       post "/api/v1/students/#{student.id}/workouts/#{workout.id}/unarchive",
            headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe "PATCH /api/v1/students/:student_id/workouts/reorder" do
+    it "reassigns positions according to the given order" do
+      w1 = create(:workout, student: student, status: "active", position: 1)
+      w2 = create(:workout, student: student, status: "active", position: 2)
+      w3 = create(:workout, student: student, status: "active", position: 3)
+
+      patch "/api/v1/students/#{student.id}/workouts/reorder",
+            params: { ordered_ids: [ w3.id, w1.id, w2.id ] },
+            headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(w3.reload.position).to eq(1)
+      expect(w1.reload.position).to eq(2)
+      expect(w2.reload.position).to eq(3)
+    end
+
+    it "returns the full workout list in the new order" do
+      w1 = create(:workout, student: student, status: "active", position: 1)
+      w2 = create(:workout, student: student, status: "active", position: 2)
+
+      patch "/api/v1/students/#{student.id}/workouts/reorder",
+            params: { ordered_ids: [ w2.id, w1.id ] },
+            headers: auth_headers(personal)
+
+      ids = json_body["data"].map { |w| w["id"].to_i }
+      expect(ids.first).to eq(w2.id)
+    end
+
+    it "does not affect workouts from other students" do
+      outsider = create(:workout, status: "active", position: 1)
+      w1 = create(:workout, student: student, status: "active", position: 1)
+      w2 = create(:workout, student: student, status: "active", position: 2)
+
+      patch "/api/v1/students/#{student.id}/workouts/reorder",
+            params: { ordered_ids: [ outsider.id, w1.id, w2.id ] },
+            headers: auth_headers(personal)
+
+      expect(outsider.reload.position).to eq(1)
+    end
+
+    it "forbids students from reordering" do
+      patch "/api/v1/students/#{student.id}/workouts/reorder",
+            params: { ordered_ids: [] },
+            headers: auth_headers(student_user)
 
       expect(response).to have_http_status(:forbidden)
     end

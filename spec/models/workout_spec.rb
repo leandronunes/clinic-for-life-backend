@@ -11,6 +11,20 @@ RSpec.describe Workout, type: :model do
 
     it { is_expected.to validate_presence_of(:title) }
     it { is_expected.to validate_inclusion_of(:status).in_array(Workout::STATUSES) }
+
+    it "does not allow two active workouts at the same position for the same student" do
+      student = create(:student)
+      create(:workout, student: student, status: "active", position: 1)
+      duplicate = build(:workout, student: student, status: "active", position: 1)
+      expect(duplicate).not_to be_valid
+    end
+
+    it "allows the same position for active and archived workouts of the same student" do
+      student = create(:student)
+      create(:workout, student: student, status: "active", position: 1)
+      coexisting = build(:workout, :archived, student: student, position: 1)
+      expect(coexisting).to be_valid
+    end
   end
 
   describe "scopes" do
@@ -36,6 +50,14 @@ RSpec.describe Workout, type: :model do
       expect(workout.status).to eq("archived")
       expect(workout.archived_at).to be_present
     end
+
+    it "assigns the next available position in the archived group" do
+      student = create(:student)
+      create(:workout, :archived, student: student, position: 1)
+      workout = create(:workout, student: student, status: "active", position: 1)
+      workout.archive!
+      expect(workout.position).to eq(2)
+    end
   end
 
   describe "#unarchive!" do
@@ -44,6 +66,14 @@ RSpec.describe Workout, type: :model do
       workout.unarchive!
       expect(workout.status).to eq("active")
       expect(workout.archived_at).to be_nil
+    end
+
+    it "assigns the next available position in the active group" do
+      student = create(:student)
+      create(:workout, student: student, status: "active", position: 1)
+      workout = create(:workout, :archived, student: student, position: 1)
+      workout.unarchive!
+      expect(workout.position).to eq(2)
     end
   end
 

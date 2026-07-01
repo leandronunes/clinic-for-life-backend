@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_134346) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -241,6 +241,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_134346) do
     t.string "title", null: false
     t.string "trainer_name"
     t.datetime "updated_at", null: false
+    t.index ["student_id", "position"], name: "index_workouts_on_student_active_position", unique: true, where: "((status)::text = 'active'::text)"
+    t.index ["student_id", "position"], name: "index_workouts_on_student_archived_position", unique: true, where: "((status)::text = 'archived'::text)"
     t.index ["student_id", "status"], name: "index_workouts_on_student_id_and_status"
     t.index ["student_id"], name: "index_workouts_on_student_id"
   end

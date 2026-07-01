@@ -4,7 +4,7 @@ FactoryBot.define do
     sequence(:title) { |n| "Workout #{n}" }
     focus { "Push" }
     status { "active" }
-    position { 1 }
+    sequence(:position) { |n| n }
     trainer_name { "Rafael Monteiro" }
 
     trait :archived do
