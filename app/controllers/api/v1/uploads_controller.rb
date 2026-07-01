@@ -5,7 +5,7 @@ module Api
       # the JSON body to be duplicated under params[:upload]. Disable it here.
       wrap_parameters false
 
-      before_action :load_and_authorize_student!
+      before_action :authorize_presign!
 
       # POST /api/v1/uploads/presign
       # Generates an S3 presigned PUT URL so the frontend can upload a file
@@ -14,7 +14,7 @@ module Api
         result = S3Presigner.new.presign(
           content_type: presign_params[:content_type],
           context: presign_params[:context],
-          student_id: @student.id
+          student_id: @student&.id
         )
         render_data(result)
       rescue S3Presigner::InvalidParamsError => e
@@ -24,6 +24,22 @@ module Api
       end
 
       private
+
+      # partner_logo has no associated student — only admins manage partners.
+      # Every other context is resolved and authorized against a student record.
+      def authorize_presign!
+        if presign_params[:context] == "partner_logo"
+          authorize_partner_logo!
+        else
+          load_and_authorize_student!
+        end
+      end
+
+      def authorize_partner_logo!
+        return if current_user&.admin?
+
+        render json: { error: "Forbidden" }, status: :forbidden
+      end
 
       # Resolves the student from params and checks that the current user may
       # upload on their behalf. Students may only presign for the exam context.

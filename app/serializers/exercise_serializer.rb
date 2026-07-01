@@ -6,6 +6,7 @@ class ExerciseSerializer
   def as_json(*)
     {
       id: @exercise.id.to_s,
+      position: @exercise.position,
       name: @exercise.name,
       sets: @exercise.sets,
       reps: @exercise.reps,

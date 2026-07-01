@@ -8,7 +8,7 @@ require "aws-sdk-s3"
 # Optional:
 #   S3_PRESIGN_EXPIRY  — seconds the presigned URL stays valid (default 600)
 class S3Presigner
-  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image exam].freeze
+  ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image exam partner_logo].freeze
 
   ALLOWED_CONTENT_TYPES = %w[
     video/mp4
@@ -43,13 +43,13 @@ class S3Presigner
   ConfigurationError = Class.new(StandardError)
   InvalidParamsError = Class.new(ArgumentError)
 
-  def presign(content_type:, context:, student_id:)
+  def presign(content_type:, context:, student_id: nil)
     validate!(content_type:, context:)
 
     # Use only the base MIME type (strips codecs/params) for extension lookup and presigning
     mime = content_type.to_s.split(";").first.to_s.strip
     ext = EXTENSION_FOR.fetch(mime, "mp4")
-    key = "#{env_prefix}uploads/students/#{student_id}/#{context}/#{SecureRandom.uuid}.#{ext}"
+    key = "#{env_prefix}uploads/#{key_scope(context, student_id)}/#{SecureRandom.uuid}.#{ext}"
 
     upload_url = presigner.presigned_url(
       :put_object,
@@ -71,6 +71,12 @@ class S3Presigner
   end
 
   private
+
+  # Uploads tied to a student are namespaced under students/#{id}; uploads with
+  # no student (e.g. partner_logo) are namespaced by context alone.
+  def key_scope(context, student_id)
+    student_id ? "students/#{student_id}/#{context}" : context.to_s
+  end
 
   def validate!(content_type:, context:)
     unless ALLOWED_CONTEXTS.include?(context)

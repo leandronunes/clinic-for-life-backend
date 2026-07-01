@@ -51,4 +51,19 @@ RSpec.describe S3Presigner do
       end
     end
   end
+
+  describe "#presign without a student_id" do
+    subject(:result) do
+      presigner.presign(content_type: "image/jpeg", context: "partner_logo")
+    end
+
+    it "returns an upload_url and a public_url" do
+      expect(result).to include(:upload_url, :public_url)
+    end
+
+    it "uses uploads/:context/ path, without a students/ segment" do
+      expect(result[:public_url]).to match(%r{uploads/partner_logo/})
+      expect(result[:public_url]).not_to include("students")
+    end
+  end
 end

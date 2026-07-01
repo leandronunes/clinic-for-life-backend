@@ -97,6 +97,29 @@ RSpec.describe "Api::V1::Uploads", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    context "with partner_logo context (no student involved)" do
+      let(:partner_logo_params) { { content_type: "image/jpeg", context: "partner_logo" } }
+
+      it "returns presigned URL for an admin without a student_id" do
+        post "/api/v1/uploads/presign", params: partner_logo_params, headers: auth_headers(admin)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_body["data"]).to include("upload_url", "public_url")
+      end
+
+      it "forbids personal trainers from presigning partner logos" do
+        post "/api/v1/uploads/presign", params: partner_logo_params, headers: auth_headers(personal)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "forbids students from presigning partner logos" do
+        post "/api/v1/uploads/presign", params: partner_logo_params, headers: auth_headers(student_user)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
     context "with invalid content type" do
       before { allow_any_instance_of(S3Presigner).to receive(:presign).and_call_original }
 

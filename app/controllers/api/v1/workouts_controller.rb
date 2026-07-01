@@ -19,8 +19,6 @@ module Api
         workout.trainer_name ||= current_user.name
 
         ActiveRecord::Base.transaction do
-          # Business rule: a student has exactly one ACTIVE workout at a time.
-          archive_active_workouts if workout.status == "active"
           workout.save!
           create_exercises(workout)
         end
@@ -33,12 +31,7 @@ module Api
       def update
         workout = @student.workouts.find(params[:id])
 
-        ActiveRecord::Base.transaction do
-          if workout_params[:status] == "active" && workout.status != "active"
-            archive_active_workouts(except: workout.id)
-          end
-          workout.update!(workout_params)
-        end
+        workout.update!(workout_params)
 
         audit!("workout.update", record: workout)
         render_data(WorkoutSerializer.new(workout.reload).as_json)
@@ -56,12 +49,6 @@ module Api
 
       def workout_params
         params.permit(:title, :focus, :status, :position, :trainer_name)
-      end
-
-      def archive_active_workouts(except: nil)
-        scope = @student.workouts.active
-        scope = scope.where.not(id: except) if except
-        scope.find_each(&:archive!)
       end
 
       def create_exercises(workout)

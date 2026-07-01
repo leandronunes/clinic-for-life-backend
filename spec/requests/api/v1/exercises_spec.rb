@@ -94,6 +94,58 @@ RSpec.describe "Api::V1::Exercises", type: :request do
     end
   end
 
+  describe "PATCH .../exercises/reorder" do
+    let!(:ex1) { create(:exercise, workout: workout, position: 1) }
+    let!(:ex2) { create(:exercise, workout: workout, position: 2) }
+    let!(:ex3) { create(:exercise, workout: workout, position: 3) }
+
+    it "reorders exercises by the provided ID list" do
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/reorder",
+            params: { ordered_ids: [ ex3.id, ex1.id, ex2.id ] },
+            headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(ex1.reload.position).to eq(2)
+      expect(ex2.reload.position).to eq(3)
+      expect(ex3.reload.position).to eq(1)
+    end
+
+    it "returns exercises in the new order" do
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/reorder",
+            params: { ordered_ids: [ ex2.id, ex3.id, ex1.id ] },
+            headers: auth_headers(personal)
+
+      data = response.parsed_body["data"]
+      expect(data.map { |e| e["id"] }).to eq([ ex2.id.to_s, ex3.id.to_s, ex1.id.to_s ])
+    end
+
+    it "includes position in each returned exercise" do
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/reorder",
+            params: { ordered_ids: [ ex2.id, ex1.id, ex3.id ] },
+            headers: auth_headers(personal)
+
+      data = response.parsed_body["data"]
+      expect(data.map { |e| e["position"] }).to eq([ 1, 2, 3 ])
+    end
+
+    it "forbids students from reordering exercises" do
+      student_user = create(:user, :student_account, student: student)
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/reorder",
+            params: { ordered_ids: [ ex1.id ] },
+            headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "silently ignores IDs that do not belong to the workout" do
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/reorder",
+            params: { ordered_ids: [ ex1.id, 999_999 ] },
+            headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   describe "DELETE .../exercises/:id" do
     it "removes an exercise" do
       exercise = create(:exercise, workout: workout)

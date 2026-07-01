@@ -26,6 +26,18 @@ module Api
         render_data(ExerciseSerializer.new(exercise).as_json)
       end
 
+      # PATCH /api/v1/students/:student_id/workouts/:workout_id/exercises/reorder
+      def reorder
+        ordered_ids = Array(params[:ordered_ids])
+        ActiveRecord::Base.transaction do
+          ordered_ids.each_with_index do |id, idx|
+            @workout.exercises.where(id: id).update_all(position: idx + 1)
+          end
+        end
+        audit!("exercise.reorder", record: @workout)
+        render_data(@workout.exercises.reload.map { |e| ExerciseSerializer.new(e).as_json })
+      end
+
       # DELETE /api/v1/students/:student_id/workouts/:workout_id/exercises/:id
       def destroy
         exercise = @workout.exercises.find(params[:id])

@@ -35,13 +35,13 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       expect(response).to have_http_status(:created)
     end
 
-    it "archives previously active workouts when activating a new one" do
+    it "allows multiple active workouts to coexist" do
       old = create(:workout, student: student, status: "active")
       post "/api/v1/students/#{student.id}/workouts",
            params: { title: "New Active", status: "active" }, headers: auth_headers(personal)
 
-      expect(old.reload.status).to eq("archived")
-      expect(student.workouts.active.count).to eq(1)
+      expect(old.reload.status).to eq("active")
+      expect(student.workouts.active.count).to eq(2)
     end
 
     it "forbids a student from creating workouts" do
@@ -52,7 +52,7 @@ RSpec.describe "Api::V1::Workouts", type: :request do
   end
 
   describe "PATCH /api/v1/students/:student_id/workouts/:id" do
-    it "archives others when an existing workout is set to active" do
+    it "re-activates an archived workout without affecting other active workouts" do
       active = create(:workout, student: student, status: "active")
       archived = create(:workout, :archived, student: student)
 
@@ -60,7 +60,7 @@ RSpec.describe "Api::V1::Workouts", type: :request do
             params: { status: "active" }, headers: auth_headers(personal)
 
       expect(archived.reload.status).to eq("active")
-      expect(active.reload.status).to eq("archived")
+      expect(active.reload.status).to eq("active")
     end
   end
 

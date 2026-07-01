@@ -54,7 +54,7 @@ Rails 8.1 API-only, Ruby 3/4, PostgreSQL, JWT, RSpec. Serve o frontend React de 
 - Sem queries dentro de loops; operações em lote quando possível.
 
 ### Regras de negócio críticas
-- Aluno tem **1 único treino ATIVO** por vez; ao ativar novo, os anteriores são arquivados.
+- Um aluno pode ter **múltiplos treinos ativos** simultaneamente; criar ou ativar um treino não afeta os demais.
 - Preservar invariantes ao alterar controllers/models.
 
 ### Testes (RSpec)
