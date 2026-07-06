@@ -94,6 +94,11 @@ render json: { error: "mensagem" }, status: :forbidden
 | `personal`| apenas seus alunos (`trainer_id`)           |
 | `student` | apenas o próprio registro (`student_id`)    |
 
+## Controle de versão
+
+- **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
+- Mesmo que o usuário tenha autorizado commit/push antes, isso não vale para novas alterações — peça confirmação novamente a cada vez.
+
 ## Comandos úteis
 
 ```bash
