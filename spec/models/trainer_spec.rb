@@ -10,14 +10,14 @@ RSpec.describe Trainer, type: :model do
     subject { build(:trainer) }
 
     it { is_expected.to validate_presence_of(:name) }
-    
+
 
     it "enforces cpf uniqueness" do
       existing = create(:trainer)
       expect(build(:trainer, cpf: existing.cpf)).not_to be_valid
     end
 
-    
+
     it { is_expected.to validate_uniqueness_of(:cref) }
     it { is_expected.to validate_presence_of(:email) }
     it { is_expected.to validate_uniqueness_of(:email).case_insensitive }

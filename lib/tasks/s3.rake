@@ -11,10 +11,10 @@ namespace :s3 do
 
     cors_rules = [
       {
-        allowed_headers: ["Content-Type"],
-        allowed_methods: ["PUT"],
+        allowed_headers: [ "Content-Type" ],
+        allowed_methods: [ "PUT" ],
         allowed_origins: origins,
-        expose_headers:  ["ETag"],
+        expose_headers:  [ "ETag" ],
         max_age_seconds: 3000
       }
     ]
