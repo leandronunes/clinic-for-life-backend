@@ -74,4 +74,14 @@ group :test do
   gem "sqlite3", ">= 2.1"
   # Code coverage analysis
   gem "simplecov", "~> 0.22", require: false
+
+  # Consumer-driven contract testing (provider verification against the frontend's pacts)
+  # pact/rspec requires the "rspec" meta-gem directly, on top of rspec-rails' own
+  # rspec-core/mocks/expectations — without it, `require "pact/rspec"` fails to load.
+  gem "rspec", "~> 3.13", require: false
+  gem "pact", "~> 2.0", require: false
+  gem "pact_broker-client", "~> 1.78", require: false
+  # Provider verification hits the app over HTTP, so committed (not transactional) fixtures
+  # are required for the request's own connection to see the provider-state setup data.
+  gem "database_cleaner-active_record", "~> 2.2", require: false
 end

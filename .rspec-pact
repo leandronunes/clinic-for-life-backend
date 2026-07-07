@@ -1,0 +1,4 @@
+--require pact/pact_helper
+--pattern spec/pact/consumers/**/*_spec.rb
+--tag pact
+--format documentation

@@ -101,3 +101,51 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  pact_verify:
+    name: Verify Pact contracts
+    runs-on: ubuntu-latest
+    # Independent of scan_ruby/lint/test: a Pact Broker outage or missing
+    # secrets shouldn't block those unrelated checks. See docs/pact.md —
+    # this job needs PACT_BROKER_BASE_URL/PACT_BROKER_TOKEN configured as
+    # repo secrets to have anything to verify against once the frontend
+    # starts publishing; until then it's expected to fail with "no pacts
+    # found", which is why it's kept separate rather than gating merges.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: clinic
+          POSTGRES_PASSWORD: clinic
+          POSTGRES_DB: clinic_for_life_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U clinic"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      RAILS_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_USERNAME: clinic
+      DATABASE_PASSWORD: clinic
+      PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+      PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+      PACT_PROVIDER_VERSION: ${{ github.sha }}
+      PACT_PROVIDER_BRANCH: ${{ github.head_ref || github.ref_name }}
+      PACT_PUBLISH_VERIFICATION_RESULTS: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Set up test database
+        run: bin/rails db:test:prepare
+
+      - name: Verify this API against the frontend's published pacts
+        run: bundle exec rake pact:verify
+
