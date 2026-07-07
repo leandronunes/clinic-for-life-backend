@@ -3,3 +3,10 @@
 
 ignore:
   - CVE-THAT-DOES-NOT-APPLY
+  # webrick is a transitive dependency of the `pact` gem (test group only),
+  # used solely to boot a loopback-only (127.0.0.1) mock/verification server
+  # during `bundle exec rake pact:verify`. It never runs in production and
+  # never receives requests from an untrusted network, so the trailer-reparsing
+  # issue (relevant to internet-facing servers) doesn't apply here. No patched
+  # webrick release exists yet — revisit this exemption once one ships.
+  - CVE-2026-38969

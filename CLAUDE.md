@@ -102,6 +102,12 @@ render json: { error: "mensagem" }, status: :forbidden
 - **Ao adicionar/alterar endpoint, atualize `swagger/v1/swagger.yaml` no mesmo PR** (paths, schemas, respostas de erro).
 - Valide com `npx @redocly/cli lint swagger/v1/swagger.yaml` antes de commitar.
 
+## Contract testing (Pact)
+
+- Este backend é **provider**. Ver `docs/pact.md` para arquitetura, como rodar, como adicionar um novo contrato e como depurar falhas.
+- **Ao adicionar/alterar endpoint consumido pelo frontend, atualize o provider state correspondente em `spec/pact/support/states/`** (registrado em `spec/pact/consumers/backend_provider_spec.rb`) no mesmo PR.
+- `bundle exec rake pact:verify` — nunca roda dentro de `bundle exec rspec` nem conta na cobertura do SimpleCov.
+
 ## Controle de versão
 
 - **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
@@ -118,4 +124,5 @@ bin/brakeman                      # security scan
 bin/rails db:migrate
 RAILS_ENV=test bin/rails db:migrate
 npx @redocly/cli lint swagger/v1/swagger.yaml   # valida a especificação OpenAPI
+bundle exec rake pact:verify                    # verifica contratos Pact — ver docs/pact.md
 ```
