@@ -11,7 +11,7 @@ gem "puma", ">= 5.0"
 gem "bcrypt", "~> 3.1.7"
 
 # JSON Web Tokens for stateless authentication
-gem "jwt", "~> 2.8"
+gem "jwt", "~> 3.2"
 
 # CSV parsing for bioimpedance imports (removed from Ruby default gems in 3.4+)
 gem "csv"
