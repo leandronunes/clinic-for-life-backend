@@ -94,6 +94,14 @@ render json: { error: "mensagem" }, status: :forbidden
 | `personal`| apenas seus alunos (`trainer_id`)           |
 | `student` | apenas o próprio registro (`student_id`)    |
 
+## Documentação da API (OpenAPI)
+
+- Especificação em `swagger/v1/swagger.yaml` (OpenAPI 3.0.3), servida via `rswag-api`/`rswag-ui`.
+- Swagger UI em `/api-docs`; documento bruto em `/api-docs/v1/swagger.yaml`.
+- Sempre montado em `development`/`test`; em produção requer `ENABLE_API_DOCS=true` (ver `config/routes.rb`) para não expor o formato da API publicamente por padrão.
+- **Ao adicionar/alterar endpoint, atualize `swagger/v1/swagger.yaml` no mesmo PR** (paths, schemas, respostas de erro).
+- Valide com `npx @redocly/cli lint swagger/v1/swagger.yaml` antes de commitar.
+
 ## Controle de versão
 
 - **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
@@ -109,4 +117,5 @@ bin/rubocop                       # lint
 bin/brakeman                      # security scan
 bin/rails db:migrate
 RAILS_ENV=test bin/rails db:migrate
+npx @redocly/cli lint swagger/v1/swagger.yaml   # valida a especificação OpenAPI
 ```

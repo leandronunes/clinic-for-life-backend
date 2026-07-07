@@ -37,6 +37,12 @@ gem "rack-attack"
 # AWS S3 — presigned URL generation for direct video uploads
 gem "aws-sdk-s3", "~> 1.170", require: false
 
+# Serves the static OpenAPI document and an interactive Swagger UI at /api-docs
+gem "rswag-api"
+gem "rswag-ui"
+# ostruct left Ruby's default gems in 4.0; rswag-ui still requires it but doesn't declare it
+gem "ostruct"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

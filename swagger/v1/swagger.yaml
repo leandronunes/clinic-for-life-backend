@@ -1,0 +1,2128 @@
+openapi: 3.0.3
+info:
+  title: Clinic for Life API
+  version: v1
+  description: |
+    API do Clinic for Life — gestão de personal trainers, alunos, avaliações,
+    treinos e evolução física. Todas as respostas de sucesso seguem o envelope
+    `{ "data": ..., "meta"?: ... }`; erros seguem `{ "error": "..." }` ou
+    `{ "error": ["..."] }` quando há múltiplas mensagens de validação.
+
+    Autenticação via JWT Bearer token, obtido em `/api/v1/auth/login`,
+    `/api/v1/auth/register` ou `/api/v1/auth/google`.
+  contact:
+    name: Clinic for Life
+servers:
+  - url: http://localhost:3002
+    description: Desenvolvimento local
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Login, registro e sessão do usuário
+  - name: Dashboard
+    description: Indicadores agregados para admin/personal
+  - name: Uploads
+    description: URLs pré-assinadas para upload direto no S3
+  - name: Trainers
+    description: Personal trainers
+  - name: Students
+    description: Alunos
+  - name: Anamnesis
+    description: Anamnese do aluno
+  - name: Structural Assessment
+    description: Avaliação estrutural do aluno
+  - name: Biomechanical Assessments
+    description: Avaliação biomecânica (fotos posturais) do aluno
+  - name: Evolution
+    description: Evolução física (medições + fotos) do aluno
+  - name: Bioimpedance Measurements
+    description: Medições de bioimpedância do aluno
+  - name: Bioimpedance Import
+    description: Importação em lote de medições via CSV (InBody)
+  - name: Workouts
+    description: Treinos do aluno
+  - name: Exercises
+    description: Exercícios de um treino
+  - name: Exams
+    description: Exames do aluno
+  - name: Partners
+    description: Parceiros exibidos na vitrine
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Autentica um usuário por e-mail e senha
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Autenticado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SessionPayload" }
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Auto-registro de usuário
+      operationId: registerUser
+      description: >-
+        Associa automaticamente a conta a um Trainer ou Student existente
+        quando o e-mail informado já estiver cadastrado como personal/aluno.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                password_confirmation: { type: string, format: password }
+      responses:
+        "201":
+          description: Conta criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SessionPayload" }
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/auth/google:
+    post:
+      tags: [Auth]
+      summary: Autentica ou registra um usuário via token OAuth do Google
+      operationId: googleAuth
+      description: >-
+        Cria a conta no primeiro acesso (retorna 201), aplicando a mesma lógica
+        de associação a Trainer/Student do endpoint de registro. Em acessos
+        seguintes retorna 200.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [access_token]
+              properties:
+                access_token: { type: string }
+      responses:
+        "200":
+          description: Login efetuado (usuário já existia)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SessionPayload" }
+        "201":
+          description: Conta criada no primeiro acesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SessionPayload" }
+        "401":
+          description: Token do Google inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Retorna o usuário autenticado
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: Usuário atual
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/dashboard/kpis:
+    get:
+      tags: [Dashboard]
+      summary: Cartões de indicadores do dashboard
+      operationId: getDashboardKpis
+      description: Requer papel `admin` ou `personal`.
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Lista de indicadores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/DashboardKpiCard" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/dashboard/activity:
+    get:
+      tags: [Dashboard]
+      summary: Série temporal de atividade (treinos e avaliações)
+      operationId: getDashboardActivity
+      description: Requer papel `admin` ou `personal`.
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Série temporal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/DashboardActivityPoint" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/uploads/presign:
+    post:
+      tags: [Uploads]
+      summary: Gera uma URL pré-assinada do S3 para upload direto
+      operationId: presignUpload
+      description: >-
+        O contexto `partner_logo` é restrito a admins; os demais contextos são
+        autorizados em relação ao `student_id` informado (dono do aluno ou o
+        próprio aluno, no caso de `exam`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content_type, context]
+              properties:
+                filename: { type: string, description: "Informativo; não afeta a chave gerada no S3" }
+                content_type:
+                  type: string
+                  description: MIME type do arquivo a ser enviado
+                  enum:
+                    - video/mp4
+                    - video/webm
+                    - video/quicktime
+                    - video/x-msvideo
+                    - video/mpeg
+                    - video/ogg
+                    - image/jpeg
+                    - image/png
+                    - image/webp
+                    - image/heic
+                    - image/heif
+                    - application/pdf
+                context:
+                  type: string
+                  enum: [exercise_video, evolution_photo, biomechanical_image, exam, partner_logo]
+                student_id:
+                  type: string
+                  description: Obrigatório para todos os contextos exceto partner_logo
+      responses:
+        "200":
+          description: URLs geradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      upload_url: { type: string, format: uri, description: "URL PUT pré-assinada, expira em S3_PRESIGN_EXPIRY segundos" }
+                      public_url: { type: string, format: uri, description: "URL pública permanente do objeto" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "503":
+          description: Storage não configurado (S3_BUCKET ausente)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/trainers:
+    get:
+      tags: [Trainers]
+      summary: Lista personal trainers
+      operationId: listTrainers
+      responses:
+        "200":
+          description: Lista de trainers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/TotalMeta"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Trainers]
+      summary: Cria um personal trainer
+      operationId: createTrainer
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrainerInput" }
+      responses:
+        "201":
+          description: Trainer criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/trainers/search:
+    get:
+      tags: [Trainers]
+      summary: Busca rápida de trainers ativos (autocomplete)
+      operationId: searchTrainers
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+          description: Filtra por nome, CREF ou e-mail (case-insensitive)
+      responses:
+        "200":
+          description: Até 8 resultados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/trainers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    get:
+      tags: [Trainers]
+      summary: Exibe um personal trainer
+      operationId: getTrainer
+      responses:
+        "200":
+          description: Trainer encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Trainers]
+      summary: Atualiza um personal trainer
+      operationId: updateTrainer
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrainerInput" }
+      responses:
+        "200":
+          description: Trainer atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Trainers]
+      summary: Atualiza um personal trainer (idêntico ao PATCH)
+      operationId: replaceTrainer
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrainerInput" }
+      responses:
+        "200":
+          description: Trainer atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: [Trainers]
+      summary: Remove um personal trainer
+      operationId: deleteTrainer
+      description: Requer papel `admin`.
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students:
+    get:
+      tags: [Students]
+      summary: Lista alunos
+      operationId: listStudents
+      description: >-
+        Personal vê apenas seus alunos (`trainer_id`); aluno vê apenas o
+        próprio registro; admin vê todos.
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive] }
+        - name: query
+          in: query
+          schema: { type: string }
+          description: Filtra por nome ou e-mail (case-insensitive)
+      responses:
+        "200":
+          description: Lista de alunos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/TotalMeta"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Students]
+      summary: Cria um aluno
+      operationId: createStudent
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentInput" }
+      responses:
+        "201":
+          description: Aluno criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Students]
+      summary: Exibe um aluno
+      operationId: getStudent
+      responses:
+        "200":
+          description: Aluno encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Students]
+      summary: Atualiza um aluno
+      operationId: updateStudent
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentInput" }
+      responses:
+        "200":
+          description: Aluno atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Students]
+      summary: Atualiza um aluno (idêntico ao PATCH)
+      operationId: replaceStudent
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentInput" }
+      responses:
+        "200":
+          description: Aluno atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: [Students]
+      summary: Remove um aluno
+      operationId: deleteStudent
+      description: Requer papel `admin`.
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/anamnesis:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Anamnesis]
+      summary: Exibe a anamnese do aluno
+      operationId: getAnamnesis
+      description: Cria um registro em branco se ainda não existir.
+      responses:
+        "200":
+          description: Anamnese do aluno
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Anamnesis" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Anamnesis]
+      summary: Atualiza a anamnese do aluno
+      operationId: updateAnamnesis
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnamnesisInput" }
+      responses:
+        "200":
+          description: Anamnese atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Anamnesis" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Anamnesis]
+      summary: Atualiza a anamnese do aluno (idêntico ao PATCH)
+      operationId: replaceAnamnesis
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnamnesisInput" }
+      responses:
+        "200":
+          description: Anamnese atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Anamnesis" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/structural_assessment:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Structural Assessment]
+      summary: Exibe a avaliação estrutural do aluno
+      operationId: getStructuralAssessment
+      description: Cria um registro em branco se ainda não existir.
+      responses:
+        "200":
+          description: Avaliação estrutural
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StructuralAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Structural Assessment]
+      summary: Atualiza a avaliação estrutural do aluno
+      operationId: updateStructuralAssessment
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StructuralAssessment" }
+      responses:
+        "200":
+          description: Avaliação atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StructuralAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Structural Assessment]
+      summary: Atualiza a avaliação estrutural do aluno (idêntico ao PATCH)
+      operationId: replaceStructuralAssessment
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StructuralAssessment" }
+      responses:
+        "200":
+          description: Avaliação atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StructuralAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/biomechanical_assessments:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Biomechanical Assessments]
+      summary: Lista o histórico de avaliações biomecânicas do aluno
+      operationId: listBiomechanicalAssessments
+      responses:
+        "200":
+          description: Lista de avaliações (mais recente primeiro)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/BiomechanicalAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/biomechanical_assessments/current:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Biomechanical Assessments]
+      summary: Exibe a avaliação biomecânica mais recente do aluno
+      operationId: getCurrentBiomechanicalAssessment
+      description: Cria uma avaliação em branco se ainda não existir nenhuma.
+      responses:
+        "200":
+          description: Avaliação biomecânica atual
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/BiomechanicalAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/biomechanical_assessments/new_assessment:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    post:
+      tags: [Biomechanical Assessments]
+      summary: Cria uma nova avaliação biomecânica (sem imagens)
+      operationId: createBiomechanicalAssessment
+      description: Requer papel `admin` ou `personal`.
+      responses:
+        "201":
+          description: Avaliação criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/BiomechanicalAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/biomechanical_assessments/upload:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    put:
+      tags: [Biomechanical Assessments]
+      summary: Anexa/substitui a imagem de um slot na avaliação atual
+      operationId: uploadBiomechanicalImage
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slot, image_url]
+              properties:
+                slot: { $ref: "#/components/schemas/BiomechanicalSlot" }
+                image_url: { type: string, format: uri }
+      responses:
+        "200":
+          description: Avaliação atualizada com a nova imagem
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/BiomechanicalAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Slot inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/biomechanical_assessments/remove_image:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    delete:
+      tags: [Biomechanical Assessments]
+      summary: Remove a imagem de um slot na avaliação atual
+      operationId: removeBiomechanicalImage
+      description: Requer papel `admin` ou `personal`.
+      parameters:
+        - name: slot
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/BiomechanicalSlot" }
+      responses:
+        "200":
+          description: Avaliação atualizada sem a imagem removida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/BiomechanicalAssessment" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/evolution:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Evolution]
+      summary: Lista as medições de bioimpedância do aluno (para o gráfico de evolução)
+      operationId: listEvolutionMeasurements
+      responses:
+        "200":
+          description: Medições ordenadas por data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/BioimpedanceMeasurement" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/evolution/photos:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Evolution]
+      summary: Lista as fotos de evolução do aluno
+      operationId: listEvolutionPhotos
+      responses:
+        "200":
+          description: Fotos ordenadas por data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/EvolutionPhoto" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Evolution]
+      summary: Associa uma foto a uma medição de bioimpedância existente
+      operationId: createEvolutionPhoto
+      description: >-
+        Cada medição pode ter no máximo uma foto associada; a data da foto
+        é herdada da medição.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bioimpedance_measurement_id, image_url]
+              properties:
+                bioimpedance_measurement_id: { type: string }
+                image_url: { type: string, format: uri }
+      responses:
+        "201":
+          description: Foto criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/EvolutionPhoto" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/evolution/photos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    delete:
+      tags: [Evolution]
+      summary: Remove uma foto de evolução
+      operationId: deleteEvolutionPhoto
+      responses:
+        "204":
+          description: Removida com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/bioimpedance_measurements:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Bioimpedance Measurements]
+      summary: Lista as medições de bioimpedância do aluno
+      operationId: listBioimpedanceMeasurements
+      responses:
+        "200":
+          description: Medições ordenadas por data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/BioimpedanceMeasurement" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Bioimpedance Measurements]
+      summary: Registra uma medição de bioimpedância manual
+      operationId: createBioimpedanceMeasurement
+      description: Requer papel `admin` ou `personal`. Uma medição por dia por aluno.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BioimpedanceMeasurementInput" }
+      responses:
+        "201":
+          description: Medição criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/BioimpedanceMeasurement" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/bioimpedance_measurements/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    delete:
+      tags: [Bioimpedance Measurements]
+      summary: Remove uma medição de bioimpedância
+      operationId: deleteBioimpedanceMeasurement
+      description: Requer papel `admin` ou `personal`.
+      responses:
+        "204":
+          description: Removida com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/bioimpedance/import:
+    post:
+      tags: [Bioimpedance Import]
+      summary: Importa medições de bioimpedância a partir de um CSV do InBody
+      operationId: importBioimpedanceMeasurements
+      description: Requer papel `admin` ou `personal` dono do aluno.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [student_id]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Arquivo CSV exportado pelo InBody (alternativo a `content`)"
+                content:
+                  type: string
+                  description: "Conteúdo do CSV já lido como texto (alternativo a `file`)"
+                student_id: { type: string }
+                filename: { type: string }
+      responses:
+        "201":
+          description: Resultado da importação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      imported: { type: integer, description: "Quantidade de linhas importadas com sucesso" }
+                      errors:
+                        type: array
+                        items: { type: string }
+                        description: "Mensagens de erro por linha inválida"
+                      preview:
+                        type: array
+                        items: { $ref: "#/components/schemas/BioimpedanceMeasurement" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Arquivo ausente, aluno não encontrado ou CSV inválido/vazio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/workouts:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Workouts]
+      summary: Lista os treinos do aluno
+      operationId: listWorkouts
+      description: >-
+        Um aluno pode ter múltiplos treinos ativos simultaneamente; use o
+        filtro `status` para separar ativos de arquivados.
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/WorkoutStatus" }
+      responses:
+        "200":
+          description: Treinos ordenados por posição
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Workouts]
+      summary: Cria um treino (opcionalmente já com exercícios)
+      operationId: createWorkout
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/WorkoutInput"
+                - type: object
+                  properties:
+                    exercises:
+                      type: array
+                      items: { $ref: "#/components/schemas/ExerciseInput" }
+      responses:
+        "201":
+          description: Treino criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/workouts/reorder:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    patch:
+      tags: [Workouts]
+      summary: Reordena os treinos do aluno
+      operationId: reorderWorkouts
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ordered_ids]
+              properties:
+                ordered_ids:
+                  type: array
+                  items: { type: string }
+                  description: IDs dos treinos na nova ordem desejada
+      responses:
+        "200":
+          description: Treinos reordenados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/workouts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Workouts]
+      summary: Atualiza um treino
+      operationId: updateWorkout
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutInput" }
+      responses:
+        "200":
+          description: Treino atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Workouts]
+      summary: Atualiza um treino (idêntico ao PATCH)
+      operationId: replaceWorkout
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutInput" }
+      responses:
+        "200":
+          description: Treino atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/workouts/{id}/archive:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [Workouts]
+      summary: Arquiva um treino
+      operationId: archiveWorkout
+      description: Requer papel `admin` ou `personal`.
+      responses:
+        "200":
+          description: Treino arquivado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/workouts/{id}/unarchive:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [Workouts]
+      summary: Reativa um treino arquivado
+      operationId: unarchiveWorkout
+      description: Requer papel `admin` ou `personal`.
+      responses:
+        "200":
+          description: Treino reativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Workout" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: O treino não está arquivado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/exercises:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+    post:
+      tags: [Exercises]
+      summary: Adiciona um exercício ao treino
+      operationId: createExercise
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExerciseInput" }
+      responses:
+        "201":
+          description: Exercício criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Exercise" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/exercises/reorder:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+    patch:
+      tags: [Exercises]
+      summary: Reordena os exercícios do treino
+      operationId: reorderExercises
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ordered_ids]
+              properties:
+                ordered_ids:
+                  type: array
+                  items: { type: string }
+                  description: IDs dos exercícios na nova ordem desejada
+      responses:
+        "200":
+          description: Exercícios reordenados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Exercise" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/exercises/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Exercises]
+      summary: Atualiza um exercício
+      operationId: updateExercise
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExerciseInput" }
+      responses:
+        "200":
+          description: Exercício atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Exercise" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Exercises]
+      summary: Atualiza um exercício (idêntico ao PATCH)
+      operationId: replaceExercise
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExerciseInput" }
+      responses:
+        "200":
+          description: Exercício atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Exercise" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: [Exercises]
+      summary: Remove um exercício
+      operationId: deleteExercise
+      description: Requer papel `admin` ou `personal`.
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/exams:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Exams]
+      summary: Lista os exames do aluno
+      operationId: listExams
+      responses:
+        "200":
+          description: Exames ordenados por data de upload (mais recente primeiro)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Exam" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Exams]
+      summary: Registra um exame já enviado ao S3
+      operationId: createExam
+      responses:
+        "201":
+          description: Exame criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Exam" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExamInput" }
+
+  /api/v1/students/{student_id}/exams/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    delete:
+      tags: [Exams]
+      summary: Remove um exame
+      operationId: deleteExam
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/partners:
+    get:
+      tags: [Partners]
+      summary: Lista parceiros
+      operationId: listPartners
+      parameters:
+        - name: category
+          in: query
+          schema: { $ref: "#/components/schemas/PartnerCategory" }
+      responses:
+        "200":
+          description: Parceiros ordenados por categoria e nome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Partner" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Partners]
+      summary: Cria um parceiro
+      operationId: createPartner
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerInput" }
+      responses:
+        "201":
+          description: Parceiro criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Partner" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/partners/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Partners]
+      summary: Atualiza um parceiro
+      operationId: updatePartner
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerInput" }
+      responses:
+        "200":
+          description: Parceiro atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Partner" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Partners]
+      summary: Atualiza um parceiro (idêntico ao PATCH)
+      operationId: replacePartner
+      description: Requer papel `admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerInput" }
+      responses:
+        "200":
+          description: Parceiro atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Partner" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: [Partners]
+      summary: Remove um parceiro
+      operationId: deletePartner
+      description: Requer papel `admin`.
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtido em /api/v1/auth/login, /auth/register ou /auth/google
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: ID do recurso
+    StudentIdParam:
+      name: student_id
+      in: path
+      required: true
+      schema: { type: string }
+      description: ID do aluno
+    WorkoutIdParam:
+      name: workout_id
+      in: path
+      required: true
+      schema: { type: string }
+      description: ID do treino
+    RangeParam:
+      name: range
+      in: query
+      schema: { type: string, enum: [day, week, year], default: month }
+      description: >-
+        Janela do agregado: day (1 dia), week (7 dias), year (365 dias).
+        Qualquer outro valor (ou ausente) usa 30 dias.
+
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Usuário autenticado sem permissão para a ação
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: Falha de validação
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          description: Mensagem única ou lista de mensagens de validação
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+
+    TotalMeta:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            total: { type: integer }
+
+    UserRole:
+      type: string
+      enum: [admin, personal, student]
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/UserRole" }
+        avatar_url: { type: string, format: uri, nullable: true }
+        trainer_id: { type: string, nullable: true }
+        student_id: { type: string, nullable: true }
+        mfa_enabled: { type: boolean }
+
+    SessionPayload:
+      type: object
+      properties:
+        token: { type: string, description: "JWT a ser enviado em Authorization: Bearer <token>" }
+        user: { $ref: "#/components/schemas/User" }
+        expires_at: { type: string, format: date-time }
+
+    TrainerStatus:
+      type: string
+      enum: [active, blocked, inactive]
+
+    Trainer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        cpf: { type: string, nullable: true }
+        cref: { type: string, nullable: true }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/TrainerStatus" }
+        avatar_url: { type: string, format: uri, nullable: true }
+        students_count: { type: integer }
+
+    TrainerInput:
+      type: object
+      required: [name, email, status]
+      properties:
+        name: { type: string }
+        cpf: { type: string, nullable: true }
+        cref: { type: string, nullable: true }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/TrainerStatus" }
+        avatar_url: { type: string, format: uri, nullable: true }
+
+    StudentSex:
+      type: string
+      enum: [female, male, other]
+
+    StudentStatus:
+      type: string
+      enum: [active, inactive]
+
+    Student:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        birth_date: { type: string, format: date, nullable: true }
+        sex: { $ref: "#/components/schemas/StudentSex" }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        trainer_id: { type: string, nullable: true }
+        trainer_name: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/StudentStatus" }
+        health_plan: { type: string, nullable: true }
+        emergency_contact: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    StudentInput:
+      type: object
+      required: [name, email, sex, status]
+      properties:
+        name: { type: string }
+        birth_date: { type: string, format: date, nullable: true }
+        sex: { $ref: "#/components/schemas/StudentSex" }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        trainer_id:
+          type: string
+          nullable: true
+          description: >-
+            Opcional quando quem cria é um personal (usa o próprio trainer_id
+            automaticamente)
+        status: { $ref: "#/components/schemas/StudentStatus" }
+        health_plan: { type: string, nullable: true }
+        emergency_contact: { type: string, nullable: true }
+
+    ExternalProfessional:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        specialty: { type: string, nullable: true }
+        objective: { type: string, nullable: true }
+
+    Anamnesis:
+      type: object
+      description: >-
+        Todos os campos clínicos são opcionais; ausentes retornam `null`.
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        objectives: { type: string, nullable: true }
+        medicines: { type: string, nullable: true }
+        supplements: { type: string, nullable: true }
+        systolic_pressure: { type: number, nullable: true }
+        diastolic_pressure: { type: number, nullable: true }
+        variable_glycemia: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
+        height: { type: number, nullable: true, description: "cm" }
+        weight: { type: number, nullable: true, description: "kg" }
+        fracture: { type: string, nullable: true }
+        dislocations: { type: string, nullable: true }
+        pain: { type: string, nullable: true }
+        orthopedic_notes: { type: string, nullable: true }
+        meals: { type: string, nullable: true }
+        hydration: { type: string, nullable: true }
+        sleep: { type: string, nullable: true }
+        stool: { type: string, nullable: true }
+        urine: { type: string, nullable: true }
+        external_professionals:
+          type: array
+          items: { $ref: "#/components/schemas/ExternalProfessional" }
+
+    AnamnesisInput:
+      type: object
+      description: >-
+        Envie apenas os campos que deseja alterar; todos são opcionais.
+        Para substituir os profissionais externos, envie `external_professionals`
+        completo — a lista anterior é descartada e recriada a partir do payload.
+      properties:
+        objectives: { type: string, nullable: true }
+        medicines: { type: string, nullable: true }
+        supplements: { type: string, nullable: true }
+        systolic_pressure: { type: number, nullable: true }
+        diastolic_pressure: { type: number, nullable: true }
+        variable_glycemia: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
+        height: { type: number, nullable: true }
+        weight: { type: number, nullable: true }
+        fracture: { type: string, nullable: true }
+        dislocations: { type: string, nullable: true }
+        pain: { type: string, nullable: true }
+        orthopedic_notes: { type: string, nullable: true }
+        meals: { type: string, nullable: true }
+        hydration: { type: string, nullable: true }
+        sleep: { type: string, nullable: true }
+        stool: { type: string, nullable: true }
+        urine: { type: string, nullable: true }
+        external_professionals:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              specialty: { type: string, nullable: true }
+              objective: { type: string, nullable: true }
+
+    StructuralAssessment:
+      type: object
+      description: >-
+        Achados estruturais booleanos (true = presente). Os mesmos 13 campos
+        são usados tanto na resposta quanto no corpo de atualização.
+      properties:
+        scoliosis: { type: boolean }
+        spine_rotation: { type: boolean }
+        hip_rotation: { type: boolean }
+        scapular_girdle_imbalance: { type: boolean }
+        scapular_dyskinesis: { type: boolean }
+        shortening: { type: boolean }
+        limb_length_difference: { type: boolean }
+        pelvic_anteversion: { type: boolean }
+        pelvic_retroversion: { type: boolean }
+        knee_valgus: { type: boolean }
+        knee_varus: { type: boolean }
+        cavus_foot_arch: { type: boolean }
+        flat_foot_arch: { type: boolean }
+
+    BiomechanicalSlot:
+      type: string
+      enum: [frontal, posterior, trunk_flexion, left_side, right_side, profile_flexion]
+
+    BiomechanicalAssessment:
+      type: object
+      properties:
+        id: { type: string }
+        created_at: { type: string, format: date-time }
+        images:
+          type: object
+          description: Mapa slot → URL da imagem (apenas slots preenchidos)
+          additionalProperties: { type: string, format: uri }
+
+    BioimpedanceMeasurement:
+      type: object
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        measured_on: { type: string, format: date }
+        weight_kg: { type: number }
+        muscle_mass_kg: { type: number, nullable: true }
+        fat_percentage: { type: number, nullable: true }
+        visceral_fat: { type: number, nullable: true }
+        bmi: { type: number, nullable: true }
+        source:
+          type: string
+          description: "Origem da medição: manual, import (CSV) ou InBody (padrão do banco)"
+        photo_id: { type: string, nullable: true }
+        photo_url: { type: string, format: uri, nullable: true }
+
+    BioimpedanceMeasurementInput:
+      type: object
+      required: [weight_kg, measured_on]
+      properties:
+        weight_kg: { type: number, minimum: 0, exclusiveMinimum: true }
+        muscle_mass_kg: { type: number, nullable: true }
+        fat_percentage: { type: number, nullable: true, minimum: 0, maximum: 75 }
+        visceral_fat: { type: number, nullable: true }
+        bmi: { type: number, nullable: true }
+        measured_on:
+          type: string
+          format: date
+          description: "Não pode ser uma data futura; única por aluno"
+        source: { type: string, description: "Padrão: manual" }
+
+    EvolutionPhoto:
+      type: object
+      properties:
+        id: { type: string }
+        measurement_id: { type: string, nullable: true }
+        taken_on: { type: string, format: date }
+        image_url: { type: string, format: uri }
+
+    WorkoutStatus:
+      type: string
+      enum: [active, archived]
+
+    Workout:
+      type: object
+      properties:
+        id: { type: string }
+        position: { type: integer }
+        title: { type: string }
+        focus: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/WorkoutStatus" }
+        created_at: { type: string, format: date }
+        archived_at: { type: string, format: date, nullable: true }
+        trainer_name: { type: string, nullable: true }
+        exercises:
+          type: array
+          items: { $ref: "#/components/schemas/Exercise" }
+
+    WorkoutInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        focus: { type: string, nullable: true }
+        status:
+          $ref: "#/components/schemas/WorkoutStatus"
+        position:
+          type: integer
+          description: "Opcional; se omitido, é calculado automaticamente (último + 1)"
+        trainer_name:
+          type: string
+          nullable: true
+          description: "Opcional; se omitido, usa o nome do usuário autenticado"
+
+    Exercise:
+      type: object
+      properties:
+        id: { type: string }
+        position: { type: integer }
+        name: { type: string }
+        sets: { type: integer }
+        reps: { type: string, nullable: true, description: "Texto livre, ex.: '8-12'" }
+        load_kg: { type: number, nullable: true }
+        rest_seconds: { type: integer }
+        muscle_group: { type: string, nullable: true }
+        video_url: { type: string, format: uri, nullable: true }
+        notes: { type: string, nullable: true }
+
+    ExerciseInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        sets: { type: integer, minimum: 1 }
+        reps: { type: string, nullable: true }
+        load_kg: { type: number, nullable: true }
+        rest_seconds: { type: integer, minimum: 0 }
+        muscle_group: { type: string, nullable: true }
+        video_url: { type: string, format: uri, nullable: true }
+        notes: { type: string, nullable: true }
+        position:
+          type: integer
+          description: "Opcional; se omitido, é calculado automaticamente"
+
+    Exam:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        file_url: { type: string, format: uri }
+        content_type: { type: string, nullable: true }
+        size: { type: integer, nullable: true, description: "bytes" }
+        uploaded_at: { type: string, format: date-time }
+
+    ExamInput:
+      type: object
+      required: [name, file_url]
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+        file_url: { type: string, format: uri }
+        content_type: { type: string, nullable: true }
+        size: { type: integer, nullable: true }
+        uploaded_at:
+          type: string
+          format: date-time
+          description: "Opcional; padrão é o momento do registro"
+
+    PartnerCategory:
+      type: string
+      enum:
+        - Nutrition
+        - Physiotherapy
+        - Sports Medicine
+        - Supplementation
+        - Aesthetics
+        - Laboratories
+
+    Partner:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        logo_url: { type: string, format: uri, nullable: true }
+        category: { $ref: "#/components/schemas/PartnerCategory" }
+        description: { type: string, nullable: true }
+        coupon: { type: string, nullable: true }
+        link: { type: string, format: uri, nullable: true }
+        created_at: { type: string, format: date }
+
+    PartnerInput:
+      type: object
+      required: [name, category]
+      properties:
+        name: { type: string }
+        logo_url: { type: string, format: uri, nullable: true }
+        category: { $ref: "#/components/schemas/PartnerCategory" }
+        description: { type: string, nullable: true }
+        coupon: { type: string, nullable: true }
+        link: { type: string, format: uri, nullable: true }
+
+    DashboardKpiCard:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: integer }
+        icon: { type: string }
+        delta: { type: number, description: "Variação percentual vs. período anterior de mesma duração" }
+
+    DashboardActivityPoint:
+      type: object
+      properties:
+        label: { type: string, format: date }
+        workouts: { type: integer }
+        assessments: { type: integer }

@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  # API docs (Swagger UI + raw OpenAPI file) are always available outside production;
+  # in production they require an explicit opt-in to avoid exposing the API shape publicly.
+  if Rails.env.local? || ActiveModel::Type::Boolean.new.cast(ENV["ENABLE_API_DOCS"])
+    mount Rswag::Api::Engine => "/api-docs"
+    mount Rswag::Ui::Engine => "/api-docs"
+  end
+
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
