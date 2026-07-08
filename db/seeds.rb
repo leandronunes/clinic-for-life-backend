@@ -222,10 +222,10 @@ ActiveRecord::Base.transaction do
   # Partners (public showcase)
   # ---------------------------------------------------------------------------
   partners = [
-    { name: "NutriVida",         category: "Nutrition",       description: "Consultoria nutricional especializada em performance esportiva.", link: "https://example.com/nutrivida", logo_url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=200&h=200&fit=crop" },
-    { name: "FisioMov",          category: "Physiotherapy",   description: "Reabilitacao e prevencao de lesoes para atletas.",                link: "https://example.com/fisiomov",  logo_url: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200&h=200&fit=crop" },
-    { name: "Sports Med Center", category: "Sports Medicine", description: "Acompanhamento medico esportivo completo.",                       link: "https://example.com/sportsmed", logo_url: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=200&h=200&fit=crop" },
-    { name: "PureSupp",          category: "Supplementation", description: "Linha premium de suplementos com certificacao.",                  link: "https://example.com/puresupp",  logo_url: "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=200&h=200&fit=crop" }
+    { name: "NutriVida",         category: "Nutrição",           description: "Consultoria nutricional especializada em performance esportiva.", link: "https://example.com/nutrivida", logo_url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=200&h=200&fit=crop" },
+    { name: "FisioMov",          category: "Fisioterapia",       description: "Reabilitacao e prevencao de lesoes para atletas.",                link: "https://example.com/fisiomov",  logo_url: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200&h=200&fit=crop" },
+    { name: "Sports Med Center", category: "Medicina Esportiva", description: "Acompanhamento medico esportivo completo.",                       link: "https://example.com/sportsmed", logo_url: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=200&h=200&fit=crop" },
+    { name: "PureSupp",          category: "Suplementação",      description: "Linha premium de suplementos com certificacao.",                  link: "https://example.com/puresupp",  logo_url: "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=200&h=200&fit=crop" }
   ]
 
   partners.each do |partner|

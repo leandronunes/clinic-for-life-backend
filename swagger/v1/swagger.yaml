@@ -1561,7 +1561,7 @@ paths:
       parameters:
         - name: category
           in: query
-          schema: { $ref: "#/components/schemas/PartnerCategory" }
+          schema: { type: string }
       responses:
         "200":
           description: Parceiros ordenados por categoria e nome
@@ -2079,23 +2079,13 @@ components:
           format: date-time
           description: "Opcional; padrão é o momento do registro"
 
-    PartnerCategory:
-      type: string
-      enum:
-        - Nutrition
-        - Physiotherapy
-        - Sports Medicine
-        - Supplementation
-        - Aesthetics
-        - Laboratories
-
     Partner:
       type: object
       properties:
         id: { type: string }
         name: { type: string }
         logo_url: { type: string, format: uri, nullable: true }
-        category: { $ref: "#/components/schemas/PartnerCategory" }
+        category: { type: string, description: "Texto livre definido pelo admin ao cadastrar o parceiro" }
         description: { type: string, nullable: true }
         discount_details: { type: string, nullable: true }
         coupon: { type: string, nullable: true }
@@ -2108,7 +2098,7 @@ components:
       properties:
         name: { type: string }
         logo_url: { type: string, format: uri, nullable: true }
-        category: { $ref: "#/components/schemas/PartnerCategory" }
+        category: { type: string, description: "Texto livre definido pelo admin ao cadastrar o parceiro" }
         description: { type: string, nullable: true }
         discount_details: { type: string, nullable: true }
         coupon: { type: string, nullable: true }
