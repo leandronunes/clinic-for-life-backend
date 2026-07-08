@@ -1,6 +1,8 @@
 module Api
   module V1
     class PartnersController < BaseController
+      # Vitrine pública de parceiros, exibida em telas de login/cadastro antes da autenticação.
+      skip_before_action :authenticate_request!, only: %i[index]
       before_action -> { require_role!(:admin) }, only: %i[create update destroy]
 
       # GET /api/v1/partners
