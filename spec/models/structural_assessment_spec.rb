@@ -5,9 +5,11 @@ RSpec.describe StructuralAssessment, type: :model do
     it { is_expected.to belong_to(:student) }
   end
 
-  it "exposes all 13 boolean item names" do
-    expect(StructuralAssessment::ITEMS.size).to eq(13)
-    expect(StructuralAssessment::ITEMS).to include("scoliosis", "knee_valgus", "flat_foot_arch")
+  it "exposes all 15 boolean item names" do
+    expect(StructuralAssessment::ITEMS.size).to eq(15)
+    expect(StructuralAssessment::ITEMS).to include(
+      "scoliosis", "hyperkyphosis", "hyperlordosis", "knee_valgus", "flat_foot_arch"
+    )
   end
 
   it "defaults all findings to false" do

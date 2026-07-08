@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_08_160628) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_08_185836) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -170,6 +170,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_160628) do
     t.datetime "created_at", null: false
     t.boolean "flat_foot_arch", default: false, null: false
     t.boolean "hip_rotation", default: false, null: false
+    t.boolean "hyperkyphosis", default: false, null: false
+    t.boolean "hyperlordosis", default: false, null: false
     t.boolean "knee_valgus", default: false, null: false
     t.boolean "knee_varus", default: false, null: false
     t.boolean "limb_length_difference", default: false, null: false

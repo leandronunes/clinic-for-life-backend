@@ -21,5 +21,13 @@ RSpec.describe "Api::V1::StructuralAssessments", type: :request do
       expect(json_body["data"]["scoliosis"]).to be(true)
       expect(student.reload.structural_assessment.knee_valgus).to be(true)
     end
+
+    it "persists hyperkyphosis and hyperlordosis" do
+      patch "/api/v1/students/#{student.id}/structural_assessment",
+            params: { hyperkyphosis: true, hyperlordosis: true }, headers: auth_headers(personal)
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["hyperkyphosis"]).to be(true)
+      expect(json_body["data"]["hyperlordosis"]).to be(true)
+    end
   end
 end

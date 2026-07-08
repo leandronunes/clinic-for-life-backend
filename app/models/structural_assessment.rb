@@ -4,6 +4,8 @@ class StructuralAssessment < ApplicationRecord
   # Boolean structural findings exposed by the assessment screen.
   ITEMS = %w[
     scoliosis
+    hyperkyphosis
+    hyperlordosis
     spine_rotation
     hip_rotation
     scapular_girdle_imbalance
