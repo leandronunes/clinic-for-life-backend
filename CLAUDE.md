@@ -113,6 +113,7 @@ render json: { error: "mensagem" }, status: :forbidden
 - **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
 - Mesmo que o usuário tenha autorizado commit/push antes, isso não vale para novas alterações — peça confirmação novamente a cada vez.
 - **`main` só recebe mudanças via pull request** — nunca `git push` direto para `main`. Crie uma branch, abra o PR e aguarde o merge (via `gh pr merge` ou pela UI) ser autorizado.
+- **Toda mensagem de commit deve ser escrita em inglês**, independentemente do idioma usado na conversa.
 
 ## Comandos úteis
 
