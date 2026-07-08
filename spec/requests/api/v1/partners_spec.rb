@@ -19,9 +19,11 @@ RSpec.describe "Api::V1::Partners", type: :request do
       expect(json_body["data"].map { |p| p["category"] }).to all(eq("Nutrition"))
     end
 
-    it "rejects unauthenticated access" do
+    it "allows unauthenticated access (public partner showcase)" do
+      create_list(:partner, 2)
       get "/api/v1/partners"
-      expect(response).to have_http_status(:unauthorized)
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"].size).to eq(2)
     end
   end
 
