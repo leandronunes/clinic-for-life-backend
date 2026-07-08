@@ -93,6 +93,35 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       expect(response).to have_http_status(:forbidden)
       expect(Workout.exists?(workout.id)).to be(true)
     end
+
+    it "closes the position gap left behind for the remaining workouts" do
+      w1 = create(:workout, student: student, status: "active", position: 1)
+      w2 = create(:workout, student: student, status: "active", position: 2)
+      w3 = create(:workout, student: student, status: "active", position: 3)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{w2.id}", headers: auth_headers(personal)
+
+      expect(w1.reload.position).to eq(1)
+      expect(w3.reload.position).to eq(2)
+    end
+
+    it "does not renumber workouts from the other status group" do
+      active = create(:workout, student: student, status: "active", position: 1)
+      archived = create(:workout, :archived, student: student, position: 5)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{active.id}", headers: auth_headers(personal)
+
+      expect(archived.reload.position).to eq(5)
+    end
+
+    it "does not renumber another student's workouts" do
+      outsider = create(:workout, status: "active", position: 3)
+      workout = create(:workout, student: student, status: "active", position: 1)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}", headers: auth_headers(personal)
+
+      expect(outsider.reload.position).to eq(3)
+    end
   end
 
   describe "POST /api/v1/students/:student_id/workouts/:id/archive" do

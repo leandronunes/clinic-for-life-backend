@@ -40,7 +40,9 @@ module Api
       # DELETE /api/v1/students/:student_id/workouts/:id
       def destroy
         workout = @student.workouts.find(params[:id])
+        status = workout.status
         workout.destroy!
+        renumber_positions!(status)
         audit!("workout.destroy", record: workout)
         head :no_content
       end
@@ -84,6 +86,23 @@ module Api
       end
 
       private
+
+      # Closes the gap a deleted workout leaves behind so a student's
+      # remaining workouts (within the same status group) stay a dense,
+      # 1-based sequence — same two-phase offset trick as #reorder, to avoid
+      # transient unique-constraint violations on (student_id, position).
+      def renumber_positions!(status)
+        ids_in_order = @student.workouts.where(status: status).order(:position, :id).pluck(:id)
+        offset = 10_000
+        ActiveRecord::Base.transaction do
+          ids_in_order.each_with_index do |id, idx|
+            @student.workouts.where(id: id).update_all(position: offset + idx + 1)
+          end
+          ids_in_order.each_with_index do |id, idx|
+            @student.workouts.where(id: id).update_all(position: idx + 1)
+          end
+        end
+      end
 
       def workout_params
         params.permit(:title, :focus, :status, :position, :trainer_name)
