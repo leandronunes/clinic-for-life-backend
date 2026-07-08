@@ -37,6 +37,12 @@ RSpec.describe "Api::V1::Partners", type: :request do
       expect(response).to have_http_status(:created)
     end
 
+    it "persists discount_details" do
+      post "/api/v1/partners", params: params.merge(discount_details: "15% off"),
+                                headers: auth_headers(admin)
+      expect(json_body["data"]["discount_details"]).to eq("15% off")
+    end
+
     it "forbids a student from creating partners" do
       post "/api/v1/partners", params: params, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
@@ -53,6 +59,13 @@ RSpec.describe "Api::V1::Partners", type: :request do
       partner = create(:partner)
       patch "/api/v1/partners/#{partner.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
       expect(partner.reload.name).to eq("Renamed")
+    end
+
+    it "updates discount_details" do
+      partner = create(:partner)
+      patch "/api/v1/partners/#{partner.id}", params: { discount_details: "20% off" },
+                                               headers: auth_headers(admin)
+      expect(partner.reload.discount_details).to eq("20% off")
     end
   end
 

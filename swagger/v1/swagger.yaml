@@ -2097,6 +2097,7 @@ components:
         logo_url: { type: string, format: uri, nullable: true }
         category: { $ref: "#/components/schemas/PartnerCategory" }
         description: { type: string, nullable: true }
+        discount_details: { type: string, nullable: true }
         coupon: { type: string, nullable: true }
         link: { type: string, format: uri, nullable: true }
         created_at: { type: string, format: date }
@@ -2109,6 +2110,7 @@ components:
         logo_url: { type: string, format: uri, nullable: true }
         category: { $ref: "#/components/schemas/PartnerCategory" }
         description: { type: string, nullable: true }
+        discount_details: { type: string, nullable: true }
         coupon: { type: string, nullable: true }
         link: { type: string, format: uri, nullable: true }
 

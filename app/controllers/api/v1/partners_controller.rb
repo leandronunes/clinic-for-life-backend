@@ -39,7 +39,7 @@ module Api
       private
 
       def partner_params
-        params.permit(:name, :logo_url, :category, :description, :coupon, :link)
+        params.permit(:name, :logo_url, :category, :description, :discount_details, :coupon, :link)
       end
     end
   end
