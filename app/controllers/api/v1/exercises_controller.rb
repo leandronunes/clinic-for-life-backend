@@ -53,8 +53,10 @@ module Api
       end
 
       def exercise_params
-        params.permit(:name, :sets, :reps, :load_kg, :rest_seconds,
-                      :muscle_group, :video_url, :notes, :position)
+        params.permit(:kind, :name, :sets, :reps, :load_kg, :rest_seconds,
+                      :muscle_group, :video_url, :notes, :position,
+                      :duration_seconds, :distance_value, :distance_unit,
+                      :hr_zone, :heart_rate_bpm)
       end
     end
   end

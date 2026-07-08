@@ -27,7 +27,8 @@ RSpec.describe "Api::V1::Workouts", type: :request do
     it "creates a workout with nested exercises" do
       params = {
         title: "Push Day", focus: "Push", status: "active",
-        exercises: [ { name: "Bench Press", sets: 4, reps: "8-10", rest_seconds: 90 } ]
+        exercises: [ { name: "Bench Press", sets: 4, reps: "8-10", rest_seconds: 90,
+                       muscle_group: "Chest" } ]
       }
       expect do
         post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
