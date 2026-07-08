@@ -72,6 +72,29 @@ RSpec.describe "Api::V1::Workouts", type: :request do
     end
   end
 
+  describe "DELETE /api/v1/students/:student_id/workouts/:id" do
+    it "removes the workout and its exercises" do
+      workout = create(:workout, student: student, status: "active")
+      create_list(:exercise, 2, workout: workout)
+
+      expect do
+        delete "/api/v1/students/#{student.id}/workouts/#{workout.id}",
+               headers: auth_headers(personal)
+      end.to change(Workout, :count).by(-1).and change(Exercise, :count).by(-2)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "forbids a student from deleting a workout" do
+      workout = create(:workout, student: student, status: "active")
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}",
+             headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(Workout.exists?(workout.id)).to be(true)
+    end
+  end
+
   describe "POST /api/v1/students/:student_id/workouts/:id/archive" do
     it "archives the workout" do
       workout = create(:workout, student: student, status: "active")

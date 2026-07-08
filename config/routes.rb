@@ -58,7 +58,7 @@ Rails.application.routes.draw do
         resources :bioimpedance_measurements, only: %i[index create destroy]
 
         # Workouts and exercises
-        resources :workouts, only: %i[index create update] do
+        resources :workouts, only: %i[index create update destroy] do
           member do
             post :archive
             post :unarchive
