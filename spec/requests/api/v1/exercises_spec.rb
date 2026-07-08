@@ -10,7 +10,8 @@ RSpec.describe "Api::V1::Exercises", type: :request do
     it "creates an exercise" do
       expect do
         post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
-             params: { name: "Squat", sets: 4, reps: "10", rest_seconds: 90 },
+             params: { name: "Squat", sets: 4, reps: "10", rest_seconds: 90,
+                      muscle_group: "Legs" },
              headers: auth_headers(personal)
       end.to change(Exercise, :count).by(1)
 
@@ -20,7 +21,8 @@ RSpec.describe "Api::V1::Exercises", type: :request do
 
     it "respects an explicitly provided position" do
       post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
-           params: { name: "Deadlift", sets: 4, reps: "5", rest_seconds: 120, position: 3 },
+           params: { name: "Deadlift", sets: 4, reps: "5", rest_seconds: 120, position: 3,
+                    muscle_group: "Legs" },
            headers: auth_headers(personal)
 
       expect(workout.exercises.find_by(name: "Deadlift").position).to eq(3)
@@ -32,6 +34,50 @@ RSpec.describe "Api::V1::Exercises", type: :request do
            params: { name: "Squat", sets: 4, reps: "10", rest_seconds: 90 },
            headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
+    end
+
+    it "defaults kind to strength when not provided" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
+           params: { name: "Squat", sets: 4, reps: "10", rest_seconds: 90,
+                    muscle_group: "Legs" },
+           headers: auth_headers(personal)
+
+      expect(response.parsed_body["data"]["kind"]).to eq("strength")
+    end
+
+    it "creates a cardio exercise" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
+           params: { kind: "cardio", name: "Corrida", duration_seconds: 1200,
+                    distance_value: 5, distance_unit: "km", hr_zone: 2 },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:created)
+      data = response.parsed_body["data"]
+      expect(data["kind"]).to eq("cardio")
+      expect(data["duration_seconds"]).to eq(1200)
+      expect(data["distance_value"]).to eq(5.0)
+      expect(data["distance_unit"]).to eq("km")
+      expect(data["hr_zone"]).to eq(2)
+    end
+
+    it "rejects a cardio exercise without duration or distance" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
+           params: { kind: "cardio", name: "Corrida" },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "creates a mobility exercise" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
+           params: { kind: "mobility", name: "Alongamento de quadril", sets: 2, reps: "10" },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:created)
+      data = response.parsed_body["data"]
+      expect(data["kind"]).to eq("mobility")
+      expect(data["sets"]).to eq(2)
+      expect(data["reps"]).to eq("10")
     end
   end
 

@@ -85,8 +85,10 @@ module Api
         return unless params.key?(:exercises)
 
         params.fetch(:exercises, []).each_with_index do |entry, index|
-          permitted = entry.permit(:name, :sets, :reps, :load_kg, :rest_seconds,
-                                   :muscle_group, :video_url, :notes, :position)
+          permitted = entry.permit(:kind, :name, :sets, :reps, :load_kg, :rest_seconds,
+                                   :muscle_group, :video_url, :notes, :position,
+                                   :duration_seconds, :distance_value, :distance_unit,
+                                   :hr_zone, :heart_rate_bpm)
           next if permitted[:name].blank?
 
           permitted[:position] ||= index
