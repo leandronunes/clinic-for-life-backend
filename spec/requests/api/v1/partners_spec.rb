@@ -37,13 +37,43 @@ RSpec.describe "Api::V1::Partners", type: :request do
       expect(response).to have_http_status(:created)
     end
 
+    it "persists discount_details" do
+      post "/api/v1/partners", params: params.merge(discount_details: "15% off"),
+                                headers: auth_headers(admin)
+      expect(json_body["data"]["discount_details"]).to eq("15% off")
+    end
+
+    it "persists discount_details for the reported NutriVida payload" do
+      payload = {
+        name: "NutriVida",
+        logo_url: "https://clinic-for-life.s3.us-west-2.amazonaws.com/dev/uploads/partner_logo/25b9054c-65ad-473f-afbe-a8961cbb2d7e.jpg",
+        category: "Nutrition",
+        description: "Consultoria nutricional especializada em performance esportiva.",
+        discount_details: "50% de desconto para teste",
+        link: "https://example.com/nutrivida"
+      }
+
+      post "/api/v1/partners", params: payload, headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:created)
+      expect(json_body["data"]["discount_details"]).to eq("50% de desconto para teste")
+      expect(Partner.last.discount_details).to eq("50% de desconto para teste")
+    end
+
     it "forbids a student from creating partners" do
       post "/api/v1/partners", params: params, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "rejects an invalid category" do
-      post "/api/v1/partners", params: params.merge(category: "Bogus"), headers: auth_headers(admin)
+    it "accepts any free-text category" do
+      post "/api/v1/partners", params: params.merge(category: "Odontologia"),
+                                headers: auth_headers(admin)
+      expect(response).to have_http_status(:created)
+      expect(json_body["data"]["category"]).to eq("Odontologia")
+    end
+
+    it "rejects a blank category" do
+      post "/api/v1/partners", params: params.merge(category: ""), headers: auth_headers(admin)
       expect(response).to have_http_status(:unprocessable_content)
     end
   end
@@ -53,6 +83,13 @@ RSpec.describe "Api::V1::Partners", type: :request do
       partner = create(:partner)
       patch "/api/v1/partners/#{partner.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
       expect(partner.reload.name).to eq("Renamed")
+    end
+
+    it "updates discount_details" do
+      partner = create(:partner)
+      patch "/api/v1/partners/#{partner.id}", params: { discount_details: "20% off" },
+                                               headers: auth_headers(admin)
+      expect(partner.reload.discount_details).to eq("20% off")
     end
   end
 

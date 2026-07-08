@@ -6,10 +6,9 @@ RSpec.describe Partner, type: :model do
 
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:category) }
-    it { is_expected.to validate_inclusion_of(:category).in_array(Partner::CATEGORIES) }
 
-    it "rejects an unknown category" do
-      expect(build(:partner, category: "Unknown")).not_to be_valid
+    it "accepts any free-text category" do
+      expect(build(:partner, category: "Odontologia")).to be_valid
     end
   end
 end
