@@ -3,7 +3,7 @@ module Api
     class WorkoutsController < BaseController
       include StudentScoped
 
-      before_action :require_write_access!, only: %i[create update archive unarchive reorder]
+      before_action :require_write_access!, only: %i[create update destroy archive unarchive reorder]
 
       # GET /api/v1/students/:student_id/workouts
       def index
@@ -35,6 +35,14 @@ module Api
         workout.update!(workout_params)
         audit!("workout.update", record: workout)
         render_data(WorkoutSerializer.new(workout.reload).as_json)
+      end
+
+      # DELETE /api/v1/students/:student_id/workouts/:id
+      def destroy
+        workout = @student.workouts.find(params[:id])
+        workout.destroy!
+        audit!("workout.destroy", record: workout)
+        head :no_content
       end
 
       # POST /api/v1/students/:student_id/workouts/:id/archive
