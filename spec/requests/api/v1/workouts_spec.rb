@@ -66,6 +66,17 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       end.to have_enqueued_job(PushNotificationJob)
     end
 
+    it "mentions the trainer's name in the push notification body" do
+      student_user
+      params = { title: "Push Day", focus: "Push", status: "active" }
+      expect do
+        post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
+      end.to have_enqueued_job(PushNotificationJob).with(
+        student_user.id,
+        hash_including(body: "O seu personal #{personal.name} criou um novo treino para você.")
+      )
+    end
+
     it "does not enqueue a push notification when the student has no linked user" do
       params = { title: "Push Day", focus: "Push", status: "active" }
       expect do

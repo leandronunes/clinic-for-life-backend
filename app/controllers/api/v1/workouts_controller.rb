@@ -100,7 +100,7 @@ module Api
         PushNotificationJob.perform_later(
           student_user.id,
           title: "Novo treino criado!",
-          body: workout.title,
+          body: "O seu personal #{workout.trainer_name} criou um novo treino para você.",
           url: "/aluno?workout=#{workout.id}"
         )
       end
