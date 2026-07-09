@@ -14,6 +14,7 @@ class StudentSerializer
       trainer_id: @student.trainer_id&.to_s,
       trainer_name: @student.trainer_name,
       status: @student.status,
+      partner_card_enabled: @student.partner_card_enabled,
       health_plan: @student.health_plan,
       emergency_contact: @student.emergency_contact,
       created_at: @student.created_at&.iso8601

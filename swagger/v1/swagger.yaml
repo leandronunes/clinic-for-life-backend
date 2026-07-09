@@ -1865,6 +1865,11 @@ components:
         trainer_id: { type: string, nullable: true }
         trainer_name: { type: string, nullable: true }
         status: { $ref: "#/components/schemas/StudentStatus" }
+        partner_card_enabled:
+          type: boolean
+          description: >-
+            Se o aluno tem acesso ao cartão de desconto de parceiros. Padrão
+            true na criação; somente um admin pode alterar.
         health_plan: { type: string, nullable: true }
         emergency_contact: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
@@ -1885,6 +1890,9 @@ components:
             Opcional quando quem cria é um personal (usa o próprio trainer_id
             automaticamente)
         status: { $ref: "#/components/schemas/StudentStatus" }
+        partner_card_enabled:
+          type: boolean
+          description: "Somente um admin pode definir este campo; ignorado para os demais papéis."
         health_plan: { type: string, nullable: true }
         emergency_contact: { type: string, nullable: true }
 
