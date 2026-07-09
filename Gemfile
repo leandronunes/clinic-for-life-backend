@@ -85,3 +85,5 @@ group :test do
   # are required for the request's own connection to see the provider-state setup data.
   gem "database_cleaner-active_record", "~> 2.2", require: false
 end
+
+gem "webpush", "~> 0.3.2"

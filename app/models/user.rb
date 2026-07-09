@@ -6,6 +6,7 @@ class User < ApplicationRecord
   belongs_to :trainer, optional: true
   belongs_to :student, optional: true
   has_many :audit_logs, dependent: :nullify
+  has_many :push_subscriptions, dependent: :destroy
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },

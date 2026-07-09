@@ -57,6 +57,29 @@ RSpec.describe "Api::V1::Workouts", type: :request do
            params: { title: "X" }, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
     end
+
+    it "enqueues a push notification job when the student has a linked user" do
+      student_user
+      params = { title: "Push Day", focus: "Push", status: "active" }
+      expect do
+        post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
+      end.to have_enqueued_job(PushNotificationJob)
+    end
+
+    it "does not enqueue a push notification when the student has no linked user" do
+      params = { title: "Push Day", focus: "Push", status: "active" }
+      expect do
+        post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
+      end.not_to have_enqueued_job(PushNotificationJob)
+    end
+
+    it "does not enqueue a push notification when the workout is created as archived" do
+      student_user
+      params = { title: "Push Day", focus: "Push", status: "archived" }
+      expect do
+        post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
+      end.not_to have_enqueued_job(PushNotificationJob)
+    end
   end
 
   describe "PATCH /api/v1/students/:student_id/workouts/:id" do

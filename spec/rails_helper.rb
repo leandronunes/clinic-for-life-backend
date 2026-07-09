@@ -74,6 +74,9 @@ RSpec.configure do |config|
 
   # Helpers to authenticate request specs.
   config.include AuthHelpers, type: :request
+
+  # have_enqueued_job / not_to have_enqueued_job in request specs.
+  config.include ActiveJob::TestHelper, type: :request
 end
 
 # One-liner matchers configuration for ActiveRecord/ActiveModel.

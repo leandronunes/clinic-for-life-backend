@@ -78,6 +78,10 @@ Rails.application.routes.draw do
 
       # Partners (showcase)
       resources :partners, only: %i[index create update destroy]
+
+      # Push notifications — browser subscriptions, scoped to the current user
+      post   "push_subscriptions", to: "push_subscriptions#create"
+      delete "push_subscriptions", to: "push_subscriptions#destroy"
     end
   end
 end

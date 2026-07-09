@@ -50,6 +50,8 @@ tags:
     description: Exames do aluno
   - name: Partners
     description: Parceiros exibidos na vitrine
+  - name: Push Subscriptions
+    description: Assinaturas de notificações push do navegador (VAPID)
 
 paths:
   /api/v1/auth/login:
@@ -1673,6 +1675,48 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/push_subscriptions:
+    post:
+      tags: [Push Subscriptions]
+      summary: Registra (ou atualiza) a assinatura de push do navegador atual
+      operationId: createPushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushSubscriptionInput" }
+      responses:
+        "201":
+          description: Assinatura registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PushSubscription" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: [Push Subscriptions]
+      summary: Remove a assinatura de push identificada pelo endpoint informado
+      operationId: deletePushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string, format: uri }
+      responses:
+        "204":
+          description: Removida (ou já inexistente) com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2103,6 +2147,25 @@ components:
         discount_details: { type: string, nullable: true }
         coupon: { type: string, nullable: true }
         link: { type: string, format: uri, nullable: true }
+
+    PushSubscription:
+      type: object
+      properties:
+        id: { type: string }
+        endpoint: { type: string, format: uri }
+        created_at: { type: string, format: date-time }
+
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: { type: string, format: uri }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string }
+            auth: { type: string }
 
     DashboardKpiCard:
       type: object
