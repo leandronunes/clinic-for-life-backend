@@ -1,5 +1,5 @@
-# The `webpush` gem (verified through 1.1.0, the latest release) generates
-# ephemeral EC keys the old, mutable-instance way:
+# The `webpush` gem this app locks to (0.3.2) generates ephemeral EC keys the
+# old, mutable-instance way:
 #
 #   key = OpenSSL::PKey::EC.new(curve_name)
 #   key.generate_key
@@ -10,20 +10,52 @@
 # fix is the modern class method `OpenSSL::PKey::EC.generate(curve_name)`,
 # which returns an already-populated key instead of mutating one in place.
 #
-# This breaks two things in the gem: Webpush::VapidKey#initialize (used by
+# This breaks three things in the gem: Webpush::VapidKey#initialize (used by
 # Webpush.generate_key, i.e. the command documented in .env.example to
-# generate a VAPID keypair) and, more importantly, Webpush::Encryption#encrypt
-# — called on *every* real push send that includes a message body, i.e.
-# every notification we send. Patch just these two methods here rather than
-# touching the gem or downgrading the app-wide `openssl` gem (used by JWT
-# signing, bcrypt, S3 request signing, etc.) for one vendor's outdated
-# key-generation call.
+# generate a VAPID keypair); Webpush::Encryption#encrypt, called on every real
+# push send that includes a message body; and Webpush::VapidKey.from_keys
+# (used by Webpush::Request#build_vapid_headers on *every* real send,
+# regardless of message body, to sign the VAPID JWT with the app's own keys)
+# — its #public_key=/#private_key= setters mutate @curve in two steps after
+# construction, which is exactly the immutable-key pattern this whole file
+# exists to avoid. Rebuild the key from a DER-encoded ECPrivateKey structure
+# (RFC 5915) in one shot instead of generate-then-mutate. Patch these here
+# rather than touching the gem or downgrading the app-wide `openssl` gem
+# (used by JWT signing, bcrypt, S3 request signing, etc.) for one vendor's
+# outdated key-generation call.
+#
+# IMPORTANT: 0.3.2 uses the older "aesgcm" encryption scheme and returns a
+# Hash (`{ ciphertext:, salt:, server_public_key:, ... }`), which
+# Webpush::Request#headers/#dh_param/#salt_param depend on — NOT the newer
+# "aes128gcm" scheme (RFC 8188, a raw binary string) used by later gem
+# versions. The patch below is copied from 0.3.2's own encrypt method with
+# only the two key-generation lines changed; do not "upgrade" it to the
+# aes128gcm shape without also bumping the gem version, or Request#headers
+# breaks with NoMethodError on the resulting String.
 #
 # Remove this file once a `webpush` release fixes it upstream.
 module Webpush
   class VapidKey
     def initialize
       @curve = OpenSSL::PKey::EC.generate("prime256v1")
+    end
+
+    def self.from_keys(encoded_public_key, encoded_private_key)
+      group = OpenSSL::PKey::EC::Group.new("prime256v1")
+      public_key_bn = OpenSSL::BN.new(Webpush.decode64(encoded_public_key), 2)
+      private_key_bn = OpenSSL::BN.new(Webpush.decode64(encoded_private_key), 2)
+      point = OpenSSL::PKey::EC::Point.new(group, public_key_bn)
+
+      der = OpenSSL::ASN1::Sequence([
+        OpenSSL::ASN1::Integer(1),
+        OpenSSL::ASN1::OctetString(private_key_bn.to_s(2)),
+        OpenSSL::ASN1::ObjectId("prime256v1", 0, :EXPLICIT),
+        OpenSSL::ASN1::BitString(point.to_octet_string(:uncompressed), 1, :EXPLICIT)
+      ]).to_der
+
+      key = new
+      key.instance_variable_set(:@curve, OpenSSL::PKey::EC.new(der))
+      key
     end
   end
 
@@ -46,23 +78,26 @@ module Webpush
 
       client_auth_token = Webpush.decode64(auth)
 
-      info = "WebPush: info\0" + client_public_key_bn.to_s(2) + server_public_key_bn.to_s(2)
-      content_encryption_key_info = "Content-Encoding: aes128gcm\0"
-      nonce_info = "Content-Encoding: nonce\0"
+      prk = HKDF.new(shared_secret, salt: client_auth_token, algorithm: "SHA256",
+                      info: "Content-Encoding: auth\0").next_bytes(32)
 
-      prk = HKDF.new(shared_secret, salt: client_auth_token, algorithm: "SHA256", info: info).next_bytes(32)
+      context = create_context(client_public_key_bn, server_public_key_bn)
+
+      content_encryption_key_info = create_info("aesgcm", context)
       content_encryption_key = HKDF.new(prk, salt: salt, info: content_encryption_key_info).next_bytes(16)
+
+      nonce_info = create_info("nonce", context)
       nonce = HKDF.new(prk, salt: salt, info: nonce_info).next_bytes(12)
 
       ciphertext = encrypt_payload(message, content_encryption_key, nonce)
 
-      serverkey16bn = convert16bit(server_public_key_bn)
-      rs = ciphertext.bytesize
-      raise ArgumentError, "encrypted payload is too big" if rs > 4096
-
-      aes128gcmheader = salt.to_s + [ rs ].pack("N*") + [ serverkey16bn.bytesize ].pack("C*") + serverkey16bn
-
-      aes128gcmheader + ciphertext
+      {
+        ciphertext: ciphertext,
+        salt: salt,
+        server_public_key_bn: convert16bit(server_public_key_bn),
+        server_public_key: server_public_key_bn.to_s(2),
+        shared_secret: shared_secret
+      }
     end
     # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   end
