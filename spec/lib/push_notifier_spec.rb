@@ -97,4 +97,27 @@ RSpec.describe PushNotifier do
       expect { Webpush::Encryption.encrypt("hello", p256dh, auth) }.not_to raise_error
     end
   end
+
+  # Guards config/initializers/webpush_ruby3_kwargs_compat.rb: the `webpush`
+  # gem (0.3.2) passes the subscription's :keys Hash as a second positional
+  # argument to a method that declares p256dh:/auth: as required keywords —
+  # fine under Ruby < 3.0's implicit Hash-to-keywords conversion, but an
+  # ArgumentError on this app's Ruby. PushNotifier's other specs stub
+  # Webpush.payload_send, so only building a real Webpush::Request (as every
+  # actual send does) exercises the patched code path.
+  describe "Ruby 3 keyword arguments compatibility patch" do
+    it "builds an encrypted payload without raising" do
+      client_key = OpenSSL::PKey::EC.generate("prime256v1")
+      p256dh = Webpush.encode64(client_key.public_key.to_bn.to_s(2))
+      auth = Webpush.encode64(SecureRandom.random_bytes(16))
+
+      expect do
+        Webpush::Request.new(
+          message: "hello",
+          subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: p256dh, auth: auth } },
+          vapid: { subject: "mailto:test@forlife.app", public_key: "pub", private_key: "priv" }
+        )
+      end.not_to raise_error
+    end
+  end
 end
