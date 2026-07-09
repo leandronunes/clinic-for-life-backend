@@ -19,6 +19,12 @@ RSpec.describe "Api::V1::PushSubscriptions", type: :request do
       expect(subscription.auth_key).to eq("authExampleSecret")
     end
 
+    it "serializes created_at as a plain date (yyyy-MM-dd), matching the frontend contract" do
+      post "/api/v1/push_subscriptions", params: params, headers: auth_headers(student_user)
+
+      expect(json_body["data"]["created_at"]).to match(/\A\d{4}-\d{2}-\d{2}\z/)
+    end
+
     it "updates the existing subscription instead of duplicating it when the endpoint repeats" do
       post "/api/v1/push_subscriptions", params: params, headers: auth_headers(student_user)
 
