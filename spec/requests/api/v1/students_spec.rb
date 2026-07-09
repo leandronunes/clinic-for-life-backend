@@ -86,6 +86,40 @@ RSpec.describe "Api::V1::Students", type: :request do
       patch "/api/v1/students/#{student.id}", params: { name: "Renamed" }, headers: auth_headers(personal)
       expect(student.reload.name).to eq("Renamed")
     end
+
+    it "lets a student update their own profile" do
+      student = create(:student, trainer: trainer)
+      student_user = create(:user, :student_account, student: student)
+
+      patch "/api/v1/students/#{student.id}", params: { name: "Renamed by self" },
+                                               headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.name).to eq("Renamed by self")
+    end
+
+    it "lets a student switch their own trainer" do
+      new_trainer = create(:trainer)
+      student = create(:student, trainer: trainer)
+      student_user = create(:user, :student_account, student: student)
+
+      patch "/api/v1/students/#{student.id}", params: { trainer_id: new_trainer.id },
+                                               headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.trainer_id).to eq(new_trainer.id)
+    end
+
+    it "forbids a student from updating another student's profile" do
+      student = create(:student, trainer: trainer)
+      other_student_user = create(:user, :student_account)
+
+      patch "/api/v1/students/#{student.id}", params: { name: "Hijacked" },
+                                               headers: auth_headers(other_student_user)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(student.reload.name).not_to eq("Hijacked")
+    end
   end
 
   describe "DELETE /api/v1/students/:id" do

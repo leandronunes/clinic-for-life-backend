@@ -2,7 +2,10 @@ module Api
   module V1
     class StudentsController < BaseController
       before_action :set_student, only: %i[show update destroy]
-      before_action :require_write_access!, only: %i[create update]
+      # update's own authorize_student! already covers write access (admin,
+      # the student's personal, or the student themselves) — require_write_access!
+      # here would additionally block students from updating their own profile.
+      before_action :require_write_access!, only: %i[create]
       before_action -> { require_role!(:admin) }, only: %i[destroy]
 
       # GET /api/v1/students
