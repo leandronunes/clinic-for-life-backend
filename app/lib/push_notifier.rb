@@ -16,7 +16,7 @@ class PushNotifier
     private
 
     def deliver(subscription, payload)
-      Webpush.payload_send(
+      WebPush.payload_send(
         message: payload,
         endpoint: subscription.endpoint,
         p256dh: subscription.p256dh_key,
@@ -27,10 +27,10 @@ class PushNotifier
           private_key: ENV.fetch("VAPID_PRIVATE_KEY")
         }
       )
-    rescue Webpush::ExpiredSubscription, Webpush::InvalidSubscription => e
+    rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription => e
       subscription.destroy
       Rails.logger.info("[PushNotifier] pruned dead subscription id=#{subscription.id}: #{e.message}")
-    rescue Webpush::ResponseError => e
+    rescue WebPush::ResponseError => e
       Rails.logger.warn("[PushNotifier] push failed subscription id=#{subscription.id}: #{e.message}")
     rescue StandardError => e
       Rails.logger.error(
