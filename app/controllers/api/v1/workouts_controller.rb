@@ -26,6 +26,7 @@ module Api
         end
 
         audit!("workout.create", record: workout)
+        notify_student_of_new_workout(workout)
         render_data(WorkoutSerializer.new(workout.reload).as_json, status: :created)
       end
 
@@ -86,6 +87,23 @@ module Api
       end
 
       private
+
+      # Best-effort push notification to the student's linked login, if any.
+      # Enqueued via ActiveJob so the network call to the push service never
+      # blocks this request/response cycle.
+      def notify_student_of_new_workout(workout)
+        return unless workout.status == "active"
+
+        student_user = @student.user
+        return if student_user.blank?
+
+        PushNotificationJob.perform_later(
+          student_user.id,
+          title: "Novo treino criado!",
+          body: workout.title,
+          url: "/aluno?workout=#{workout.id}"
+        )
+      end
 
       # Closes the gap a deleted workout leaves behind so a student's
       # remaining workouts (within the same status group) stay a dense,

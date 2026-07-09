@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_08_213546) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_102449) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -166,6 +166,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_213546) do
     t.index ["category"], name: "index_partners_on_category"
   end
 
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.string "auth_key", null: false
+    t.datetime "created_at", null: false
+    t.text "endpoint", null: false
+    t.string "p256dh_key", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.bigint "user_id", null: false
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
+  end
+
   create_table "structural_assessments", force: :cascade do |t|
     t.boolean "cavus_foot_arch", default: false, null: false
     t.datetime "created_at", null: false
@@ -267,6 +279,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_213546) do
   add_foreign_key "exams", "students"
   add_foreign_key "exercises", "workouts"
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
+  add_foreign_key "push_subscriptions", "users"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"
   add_foreign_key "users", "students"

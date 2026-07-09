@@ -34,4 +34,5 @@ RSpec.describe "Clinic For Life API" do
   instance_eval(&PactStates::Exams.definitions)
   instance_eval(&PactStates::Dashboard.definitions)
   instance_eval(&PactStates::Uploads.definitions)
+  instance_eval(&PactStates::PushSubscriptions.definitions)
 end
