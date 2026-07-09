@@ -79,22 +79,30 @@ RSpec.describe PushNotifier do
   end
 
   # Guards config/initializers/webpush_openssl3_compat.rb: the `webpush` gem
-  # (through 1.1.0) generates ephemeral EC keys the old mutable-instance way,
-  # which raises OpenSSL::PKey::PKeyError on openssl gem 3.0+. These exercise
-  # the real (unmocked) gem methods our initializer patches, so a stale patch
-  # or an accidental deletion of the initializer fails loudly here instead of
-  # silently breaking every real push send.
+  # (0.3.2, the version this app locks to) generates ephemeral EC keys the old
+  # mutable-instance way, which raises OpenSSL::PKey::PKeyError on openssl gem
+  # 3.0+. These exercise the real (unmocked) gem methods our initializer
+  # patches, so a stale patch or an accidental deletion of the initializer
+  # fails loudly here instead of silently breaking every real push send.
+  #
+  # The Hash-shape assertion below is load-bearing, not decorative: an earlier
+  # version of this patch returned a raw String (the aes128gcm/RFC 8188 shape
+  # used by newer webpush releases) instead of 0.3.2's actual aesgcm Hash
+  # shape. "does not raise" alone passed, but Webpush::Request#headers then
+  # blew up in production calling `.has_key?` on that String.
   describe "OpenSSL 3.0 compatibility patch" do
     it "generates a VAPID keypair without raising" do
       expect { Webpush.generate_key }.not_to raise_error
     end
 
-    it "encrypts a push payload without raising" do
+    it "encrypts a push payload into the Hash shape webpush 0.3.2 expects" do
       client_key = OpenSSL::PKey::EC.generate("prime256v1")
       p256dh = Webpush.encode64(client_key.public_key.to_bn.to_s(2))
       auth = Webpush.encode64(SecureRandom.random_bytes(16))
 
-      expect { Webpush::Encryption.encrypt("hello", p256dh, auth) }.not_to raise_error
+      result = Webpush::Encryption.encrypt("hello", p256dh, auth)
+
+      expect(result).to include(:ciphertext, :salt, :server_public_key_bn, :server_public_key, :shared_secret)
     end
   end
 
@@ -104,20 +112,26 @@ RSpec.describe PushNotifier do
   # fine under Ruby < 3.0's implicit Hash-to-keywords conversion, but an
   # ArgumentError on this app's Ruby. PushNotifier's other specs stub
   # Webpush.payload_send, so only building a real Webpush::Request (as every
-  # actual send does) exercises the patched code path.
+  # actual send does) exercises the patched code path. Calling #headers (not
+  # just .new) is deliberate: that's the method that actually crashed in
+  # production, since it's what reads the encrypted payload's Hash keys.
   describe "Ruby 3 keyword arguments compatibility patch" do
-    it "builds an encrypted payload without raising" do
+    it "builds and headers a real push request without raising" do
       client_key = OpenSSL::PKey::EC.generate("prime256v1")
       p256dh = Webpush.encode64(client_key.public_key.to_bn.to_s(2))
       auth = Webpush.encode64(SecureRandom.random_bytes(16))
+      vapid_key = Webpush.generate_key
 
-      expect do
-        Webpush::Request.new(
-          message: "hello",
-          subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: p256dh, auth: auth } },
-          vapid: { subject: "mailto:test@forlife.app", public_key: "pub", private_key: "priv" }
-        )
-      end.not_to raise_error
+      request = Webpush::Request.new(
+        message: "hello",
+        subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: p256dh, auth: auth } },
+        vapid: { subject: "mailto:test@forlife.app", public_key: vapid_key.public_key, private_key: vapid_key.private_key }
+      )
+
+      headers = request.headers
+
+      expect(headers["Content-Encoding"]).to eq("aesgcm")
+      expect(headers).to include("Authorization", "Crypto-Key")
     end
   end
 end
