@@ -7,7 +7,7 @@ class PushSubscriptionSerializer
     {
       id: @subscription.id.to_s,
       endpoint: @subscription.endpoint,
-      created_at: @subscription.created_at&.iso8601
+      created_at: @subscription.created_at&.to_date&.iso8601
     }
   end
 end
