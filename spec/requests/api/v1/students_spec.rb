@@ -78,6 +78,23 @@ RSpec.describe "Api::V1::Students", type: :request do
       post "/api/v1/students", params: valid_params, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
     end
+
+    it "defaults partner_card_enabled to true" do
+      post "/api/v1/students", params: valid_params, headers: auth_headers(admin)
+      expect(json_body["data"]["partner_card_enabled"]).to be(true)
+    end
+
+    it "lets an admin disable the partner card on create" do
+      post "/api/v1/students", params: valid_params.merge(partner_card_enabled: false),
+                                headers: auth_headers(admin)
+      expect(json_body["data"]["partner_card_enabled"]).to be(false)
+    end
+
+    it "ignores partner_card_enabled sent by a personal" do
+      post "/api/v1/students", params: valid_params.merge(partner_card_enabled: false),
+                                headers: auth_headers(personal)
+      expect(Student.last.partner_card_enabled).to be(true)
+    end
   end
 
   describe "PATCH /api/v1/students/:id" do
@@ -119,6 +136,37 @@ RSpec.describe "Api::V1::Students", type: :request do
 
       expect(response).to have_http_status(:forbidden)
       expect(student.reload.name).not_to eq("Hijacked")
+    end
+
+    it "lets an admin disable a student's partner card" do
+      student = create(:student, trainer: trainer)
+      patch "/api/v1/students/#{student.id}", params: { partner_card_enabled: false },
+                                               headers: auth_headers(admin)
+      expect(student.reload.partner_card_enabled).to be(false)
+    end
+
+    it "lets an admin re-enable a student's partner card" do
+      student = create(:student, trainer: trainer, partner_card_enabled: false)
+      patch "/api/v1/students/#{student.id}", params: { partner_card_enabled: true },
+                                               headers: auth_headers(admin)
+      expect(student.reload.partner_card_enabled).to be(true)
+    end
+
+    it "ignores partner_card_enabled sent by a personal" do
+      student = create(:student, trainer: trainer)
+      patch "/api/v1/students/#{student.id}", params: { partner_card_enabled: false },
+                                               headers: auth_headers(personal)
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.partner_card_enabled).to be(true)
+    end
+
+    it "ignores partner_card_enabled sent by the student themselves" do
+      student = create(:student, trainer: trainer)
+      student_user = create(:user, :student_account, student: student)
+      patch "/api/v1/students/#{student.id}", params: { partner_card_enabled: false },
+                                               headers: auth_headers(student_user)
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.partner_card_enabled).to be(true)
     end
   end
 

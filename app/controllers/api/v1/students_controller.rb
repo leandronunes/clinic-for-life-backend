@@ -31,7 +31,7 @@ module Api
 
       # POST /api/v1/students
       def create
-        student = Student.new(student_params)
+        student = Student.new(student_params.merge(admin_only_params))
         student.trainer_id ||= current_user.trainer_id if current_user.personal?
         student.save!
         audit!("student.create", record: student)
@@ -43,7 +43,7 @@ module Api
         authorize_student!(@student)
         return if performed?
 
-        @student.update!(student_params)
+        @student.update!(student_params.merge(admin_only_params))
         audit!("student.update", record: @student)
         render_data(StudentSerializer.new(@student).as_json)
       end
@@ -71,6 +71,18 @@ module Api
       def student_params
         params.permit(:name, :birth_date, :sex, :email, :phone,
                       :trainer_id, :status, :health_plan, :emergency_contact)
+      end
+
+      # partner_card_enabled is deliberately kept out of student_params: a
+      # student can update their own record (see authorize_student!), and a
+      # personal can update their own students, but only an admin may toggle
+      # this field. Reading params[:partner_card_enabled] directly (rather
+      # than permitting it) means a non-admin's request simply never reaches
+      # the model, regardless of what they send.
+      def admin_only_params
+        return {} unless current_user.admin? && params.key?(:partner_card_enabled)
+
+        { partner_card_enabled: params[:partner_card_enabled] }
       end
     end
   end
