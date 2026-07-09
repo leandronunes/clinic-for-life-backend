@@ -11,7 +11,7 @@ RSpec.describe PushNotifier do
 
   describe ".send_to_user" do
     it "does nothing when the user is blank" do
-      expect(Webpush).not_to receive(:payload_send)
+      expect(WebPush).not_to receive(:payload_send)
       described_class.send_to_user(nil, title: "T", body: "B")
     end
 
@@ -19,24 +19,24 @@ RSpec.describe PushNotifier do
       user = create(:user, :student_account)
       sub1 = create(:push_subscription, user: user)
       sub2 = create(:push_subscription, user: user)
-      allow(Webpush).to receive(:payload_send)
+      allow(WebPush).to receive(:payload_send)
 
       described_class.send_to_user(user, title: "Novo treino!", body: "Push Day", url: "/aluno")
 
-      expect(Webpush).to have_received(:payload_send).with(
+      expect(WebPush).to have_received(:payload_send).with(
         hash_including(endpoint: sub1.endpoint, p256dh: sub1.p256dh_key, auth: sub1.auth_key)
       )
-      expect(Webpush).to have_received(:payload_send).with(hash_including(endpoint: sub2.endpoint))
+      expect(WebPush).to have_received(:payload_send).with(hash_including(endpoint: sub2.endpoint))
     end
 
     it "sends the title/body/url as a JSON message payload" do
       user = create(:user, :student_account)
       create(:push_subscription, user: user)
-      allow(Webpush).to receive(:payload_send)
+      allow(WebPush).to receive(:payload_send)
 
       described_class.send_to_user(user, title: "Novo treino!", body: "Push Day", url: "/aluno")
 
-      expect(Webpush).to have_received(:payload_send) do |args|
+      expect(WebPush).to have_received(:payload_send) do |args|
         expect(JSON.parse(args[:message])).to eq(
           "title" => "Novo treino!", "body" => "Push Day", "url" => "/aluno"
         )
@@ -46,8 +46,8 @@ RSpec.describe PushNotifier do
     it "prunes the subscription when the push service reports it expired" do
       user = create(:user, :student_account)
       subscription = create(:push_subscription, user: user)
-      allow(Webpush).to receive(:payload_send).and_raise(
-        Webpush::ExpiredSubscription.new(instance_double(Net::HTTPResponse, body: "gone"), "fcm.googleapis.com")
+      allow(WebPush).to receive(:payload_send).and_raise(
+        WebPush::ExpiredSubscription.new(instance_double(Net::HTTPResponse, body: "gone"), "fcm.googleapis.com")
       )
 
       expect do
@@ -59,8 +59,8 @@ RSpec.describe PushNotifier do
     it "keeps the subscription and logs on a generic response error" do
       user = create(:user, :student_account)
       subscription = create(:push_subscription, user: user)
-      allow(Webpush).to receive(:payload_send).and_raise(
-        Webpush::ResponseError.new(instance_double(Net::HTTPResponse, body: "oops"), "fcm.googleapis.com")
+      allow(WebPush).to receive(:payload_send).and_raise(
+        WebPush::ResponseError.new(instance_double(Net::HTTPResponse, body: "oops"), "fcm.googleapis.com")
       )
 
       expect do
@@ -72,57 +72,29 @@ RSpec.describe PushNotifier do
     it "does not raise on unexpected errors" do
       user = create(:user, :student_account)
       create(:push_subscription, user: user)
-      allow(Webpush).to receive(:payload_send).and_raise(StandardError, "boom")
+      allow(WebPush).to receive(:payload_send).and_raise(StandardError, "boom")
 
       expect { described_class.send_to_user(user, title: "T", body: "B") }.not_to raise_error
     end
   end
 
-  # Guards config/initializers/webpush_openssl3_compat.rb: the `webpush` gem
-  # (0.3.2, the version this app locks to) generates ephemeral EC keys the old
-  # mutable-instance way, which raises OpenSSL::PKey::PKeyError on openssl gem
-  # 3.0+. These exercise the real (unmocked) gem methods our initializer
-  # patches, so a stale patch or an accidental deletion of the initializer
-  # fails loudly here instead of silently breaking every real push send.
-  #
-  # The Hash-shape assertion below is load-bearing, not decorative: an earlier
-  # version of this patch returned a raw String (the aes128gcm/RFC 8188 shape
-  # used by newer webpush releases) instead of 0.3.2's actual aesgcm Hash
-  # shape. "does not raise" alone passed, but Webpush::Request#headers then
-  # blew up in production calling `.has_key?` on that String.
-  describe "OpenSSL 3.0 compatibility patch" do
-    it "generates a VAPID keypair without raising" do
-      expect { Webpush.generate_key }.not_to raise_error
-    end
-
-    it "encrypts a push payload into the Hash shape webpush 0.3.2 expects" do
+  # End-to-end smoke test against the real (unmocked) `web-push` gem, not just
+  # PushNotifier's own logic (which the specs above stub WebPush.payload_send
+  # for). We previously vendored monkey-patches for the older `webpush` gem
+  # to work around OpenSSL 3.0/Ruby 3 incompatibilities in its internals, and
+  # got burned twice by "does not raise" assertions that passed despite the
+  # patches being subtly wrong. `web-push` (the actively maintained Pushpad
+  # fork this app now uses) doesn't need any patch, but keep this test as a
+  # tripwire: it builds a real request, signs it with a real VAPID keypair,
+  # and asserts on the actual header/body shape rather than just "no error".
+  describe "real push request pipeline" do
+    it "builds and signs a push request with the expected headers and body" do
       client_key = OpenSSL::PKey::EC.generate("prime256v1")
-      p256dh = Webpush.encode64(client_key.public_key.to_bn.to_s(2))
-      auth = Webpush.encode64(SecureRandom.random_bytes(16))
+      p256dh = WebPush.encode64(client_key.public_key.to_bn.to_s(2))
+      auth = WebPush.encode64(SecureRandom.random_bytes(16))
+      vapid_key = WebPush.generate_key
 
-      result = Webpush::Encryption.encrypt("hello", p256dh, auth)
-
-      expect(result).to include(:ciphertext, :salt, :server_public_key_bn, :server_public_key, :shared_secret)
-    end
-  end
-
-  # Guards config/initializers/webpush_ruby3_kwargs_compat.rb: the `webpush`
-  # gem (0.3.2) passes the subscription's :keys Hash as a second positional
-  # argument to a method that declares p256dh:/auth: as required keywords —
-  # fine under Ruby < 3.0's implicit Hash-to-keywords conversion, but an
-  # ArgumentError on this app's Ruby. PushNotifier's other specs stub
-  # Webpush.payload_send, so only building a real Webpush::Request (as every
-  # actual send does) exercises the patched code path. Calling #headers (not
-  # just .new) is deliberate: that's the method that actually crashed in
-  # production, since it's what reads the encrypted payload's Hash keys.
-  describe "Ruby 3 keyword arguments compatibility patch" do
-    it "builds and headers a real push request without raising" do
-      client_key = OpenSSL::PKey::EC.generate("prime256v1")
-      p256dh = Webpush.encode64(client_key.public_key.to_bn.to_s(2))
-      auth = Webpush.encode64(SecureRandom.random_bytes(16))
-      vapid_key = Webpush.generate_key
-
-      request = Webpush::Request.new(
+      request = WebPush::Request.new(
         message: "hello",
         subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: p256dh, auth: auth } },
         vapid: { subject: "mailto:test@forlife.app", public_key: vapid_key.public_key, private_key: vapid_key.private_key }
@@ -130,8 +102,9 @@ RSpec.describe PushNotifier do
 
       headers = request.headers
 
-      expect(headers["Content-Encoding"]).to eq("aesgcm")
-      expect(headers).to include("Authorization", "Crypto-Key")
+      expect(headers["Content-Encoding"]).to eq("aes128gcm")
+      expect(headers).to include("Authorization")
+      expect(request.body).not_to be_empty
     end
   end
 end

@@ -86,4 +86,4 @@ group :test do
   gem "database_cleaner-active_record", "~> 2.2", require: false
 end
 
-gem "webpush", "~> 0.3.2"
+gem "web-push", "~> 3.1"
