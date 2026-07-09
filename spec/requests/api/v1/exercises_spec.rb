@@ -60,6 +60,16 @@ RSpec.describe "Api::V1::Exercises", type: :request do
       expect(data["hr_zone"]).to eq(2)
     end
 
+    it "accepts a free-text heart rate range instead of a single number" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
+           params: { kind: "cardio", name: "Corrida", duration_seconds: 1200,
+                    heart_rate_bpm: "133 - 150" },
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body["data"]["heart_rate_bpm"]).to eq("133 - 150")
+    end
+
     it "rejects a cardio exercise without duration or distance" do
       post "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises",
            params: { kind: "cardio", name: "Corrida" },

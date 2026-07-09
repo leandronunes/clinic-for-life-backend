@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_08_210238) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_08_213546) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -126,7 +126,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_210238) do
     t.string "distance_unit"
     t.decimal "distance_value", precision: 6, scale: 2
     t.integer "duration_seconds"
-    t.integer "heart_rate_bpm"
+    t.string "heart_rate_bpm"
     t.integer "hr_zone"
     t.string "kind", default: "strength", null: false
     t.decimal "load_kg", precision: 6, scale: 2
