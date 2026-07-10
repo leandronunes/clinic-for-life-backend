@@ -16,7 +16,8 @@ Rails.application.routes.draw do
       post "auth/login",    to: "auth#login"
       post "auth/register", to: "auth#register"
       post "auth/google",   to: "auth#google_auth"
-      get  "auth/me",       to: "auth#me"
+      get   "auth/me",      to: "auth#me"
+      patch "auth/me",      to: "auth#update_me"
 
       # Dashboard
       get "dashboard/kpis",     to: "dashboard#kpis"

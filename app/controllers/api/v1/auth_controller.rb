@@ -95,7 +95,18 @@ module Api
         render_data(UserSerializer.new(current_user).as_json)
       end
 
+      # PATCH /api/v1/auth/me
+      def update_me
+        current_user.update!(auth_me_params)
+        audit!("user.update_self", record: current_user)
+        render_data(UserSerializer.new(current_user).as_json)
+      end
+
       private
+
+      def auth_me_params
+        params.permit(:name, :email)
+      end
 
       def session_payload(user)
         token = JsonWebToken.encode({ sub: user.id, email: user.email, role: user.role })
