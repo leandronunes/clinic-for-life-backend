@@ -61,6 +61,26 @@ RSpec.describe ExerciseSerializer do
     expect(json[:load_kg]).to eq(42.5)
     expect(json[:sets]).to eq(exercise.sets)
   end
+
+  it "presigns an uploaded video_url so the bucket can stay private" do
+    stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-for-life", "AWS_REGION" => "us-east-1"))
+    fake_presigner = instance_double(Aws::S3::Presigner,
+      presigned_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.mp4?X-Amz-Signature=abc")
+    allow(Aws::S3::Presigner).to receive(:new).and_return(fake_presigner)
+    exercise = create(:exercise,
+      video_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.mp4")
+
+    json = described_class.new(exercise).as_json
+
+    expect(json[:video_url]).to include("X-Amz-Signature")
+  end
+
+  it "leaves a YouTube video_url untouched" do
+    exercise = create(:exercise, video_url: "https://www.youtube.com/embed/abc")
+    json = described_class.new(exercise).as_json
+
+    expect(json[:video_url]).to eq("https://www.youtube.com/embed/abc")
+  end
 end
 
 RSpec.describe PartnerSerializer do
@@ -94,6 +114,19 @@ RSpec.describe EvolutionPhotoSerializer do
     expect(json[:taken_on]).to eq("2025-09-01")
     expect(json[:image_url]).to eq(photo.image_url)
   end
+
+  it "presigns an uploaded image_url so the bucket can stay private" do
+    stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-for-life", "AWS_REGION" => "us-east-1"))
+    fake_presigner = instance_double(Aws::S3::Presigner,
+      presigned_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg?X-Amz-Signature=abc")
+    allow(Aws::S3::Presigner).to receive(:new).and_return(fake_presigner)
+    photo = create(:evolution_photo,
+      image_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg")
+
+    json = described_class.new(photo).as_json
+
+    expect(json[:image_url]).to include("X-Amz-Signature")
+  end
 end
 
 RSpec.describe BiomechanicalAssessmentSerializer do
@@ -104,6 +137,20 @@ RSpec.describe BiomechanicalAssessmentSerializer do
 
     expect(json[:id]).to eq(assessment.id.to_s)
     expect(json[:images]).to have_key("frontal")
+  end
+
+  it "presigns each uploaded image in the images map" do
+    stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-for-life", "AWS_REGION" => "us-east-1"))
+    fake_presigner = instance_double(Aws::S3::Presigner,
+      presigned_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/frontal.jpg?X-Amz-Signature=abc")
+    allow(Aws::S3::Presigner).to receive(:new).and_return(fake_presigner)
+    assessment = create(:biomechanical_assessment)
+    create(:biomechanical_image, biomechanical_assessment: assessment, slot: "frontal",
+      image_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/frontal.jpg")
+
+    json = described_class.new(assessment).as_json
+
+    expect(json[:images]["frontal"]).to include("X-Amz-Signature")
   end
 end
 
@@ -138,5 +185,17 @@ RSpec.describe ExamSerializer do
     expect(json[:id]).to eq(exam.id.to_s)
     expect(json[:name]).to eq(exam.name)
     expect(json[:content_type]).to eq("application/pdf")
+  end
+
+  it "presigns an uploaded file_url so the bucket can stay private" do
+    stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-for-life", "AWS_REGION" => "us-east-1"))
+    fake_presigner = instance_double(Aws::S3::Presigner,
+      presigned_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.pdf?X-Amz-Signature=abc")
+    allow(Aws::S3::Presigner).to receive(:new).and_return(fake_presigner)
+    exam = create(:exam, file_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.pdf")
+
+    json = described_class.new(exam).as_json
+
+    expect(json[:file_url]).to include("X-Amz-Signature")
   end
 end

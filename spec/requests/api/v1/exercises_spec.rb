@@ -108,6 +108,9 @@ RSpec.describe "Api::V1::Exercises", type: :request do
         presigner = instance_double(S3Presigner)
         allow(S3Presigner).to receive(:new).and_return(presigner)
         allow(presigner).to receive(:delete)
+        # The response re-serializes the exercise, which presigns video_url —
+        # unrelated to the deletion behavior this example verifies.
+        allow(presigner).to receive(:presign_get_for) { |url| url }
 
         patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
               params: { video_url: new_s3_url }, headers: auth_headers(personal)
@@ -127,10 +130,10 @@ RSpec.describe "Api::V1::Exercises", type: :request do
     end
 
     context "when video_url does not change" do
-      it "does not call S3Presigner" do
+      it "does not call S3Presigner to delete anything" do
         exercise = create(:exercise, workout: workout,
                           video_url: "https://clinic-bucket.s3.us-east-1.amazonaws.com/old.mp4")
-        expect(S3Presigner).not_to receive(:new)
+        expect_any_instance_of(S3Presigner).not_to receive(:delete)
 
         patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
               params: { load_kg: 50 }, headers: auth_headers(personal)
@@ -138,10 +141,10 @@ RSpec.describe "Api::V1::Exercises", type: :request do
     end
 
     context "when old video_url is a YouTube URL" do
-      it "does not call S3Presigner" do
+      it "does not call S3Presigner to delete anything" do
         exercise = create(:exercise, workout: workout,
                           video_url: "https://www.youtube.com/embed/abc123")
-        expect(S3Presigner).not_to receive(:new)
+        expect_any_instance_of(S3Presigner).not_to receive(:delete)
 
         patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
               params: { video_url: "https://clinic-bucket.s3.us-east-1.amazonaws.com/new.mp4" },

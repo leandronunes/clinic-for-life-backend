@@ -50,7 +50,7 @@ RSpec.describe "Api::V1::BiomechanicalAssessments", type: :request do
     end
 
     it "does not call S3 when uploading to an empty slot" do
-      expect(S3Presigner).not_to receive(:new)
+      expect_any_instance_of(S3Presigner).not_to receive(:delete)
 
       put "/api/v1/students/#{student.id}/biomechanical_assessments/upload",
           params: { slot: "frontal", image_url: "https://clinic-bucket.s3.us-east-1.amazonaws.com/new.jpg" },
@@ -71,6 +71,9 @@ RSpec.describe "Api::V1::BiomechanicalAssessments", type: :request do
         presigner = instance_double(S3Presigner)
         allow(S3Presigner).to receive(:new).and_return(presigner)
         allow(presigner).to receive(:delete)
+        # The response re-serializes the assessment's images map, which
+        # presigns each URL — unrelated to the deletion behavior tested here.
+        allow(presigner).to receive(:presign_get_for) { |url| url }
 
         put "/api/v1/students/#{student.id}/biomechanical_assessments/upload",
             params: { slot: "frontal", image_url: new_s3_url },

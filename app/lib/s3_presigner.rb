@@ -1,12 +1,17 @@
 require "aws-sdk-s3"
 
 # Generates S3 presigned PUT URLs so the frontend can upload videos
-# directly to S3 without routing the binary payload through this server.
+# directly to S3 without routing the binary payload through this server,
+# and presigned GET URLs so private objects (exercise videos, evolution
+# photos, exams, biomechanical images) can be viewed without making the
+# bucket world-readable. Only partner_logo stays on a public bucket policy —
+# it's meant to be public (the partner showcase).
 #
 # ENV vars required:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET
 # Optional:
-#   S3_PRESIGN_EXPIRY  — seconds the presigned URL stays valid (default 600)
+#   S3_PRESIGN_EXPIRY      — seconds an upload URL stays valid (default 600)
+#   S3_GET_PRESIGN_EXPIRY  — seconds a view URL stays valid (default 900)
 class S3Presigner
   ALLOWED_CONTEXTS = %w[exercise_video evolution_photo biomechanical_image exam partner_logo].freeze
 
@@ -43,6 +48,13 @@ class S3Presigner
   ConfigurationError = Class.new(StandardError)
   InvalidParamsError = Class.new(ArgumentError)
 
+  # Rewrites `url` into a short-lived presigned GET URL when it points at
+  # our own bucket; anything else (a YouTube embed, a fixture URL in
+  # tests, or S3 not being configured) is returned unchanged.
+  def self.presign_get_for(url)
+    new.presign_get_for(url)
+  end
+
   def presign(content_type:, context:, student_id: nil)
     validate!(content_type:, context:)
 
@@ -68,6 +80,15 @@ class S3Presigner
   def delete(public_url:)
     key = extract_key(public_url)
     s3_client.delete_object(bucket: bucket, key: key)
+  end
+
+  def presign_get_for(url, expires_in: get_expiry)
+    return url if url.blank?
+    return url unless url.to_s.start_with?("https://#{bucket}.s3.#{region}.amazonaws.com/")
+
+    presigner.presigned_url(:get_object, bucket: bucket, key: extract_key(url), expires_in: expires_in)
+  rescue ConfigurationError
+    url
   end
 
   private
@@ -114,6 +135,10 @@ class S3Presigner
 
   def expiry
     ENV.fetch("S3_PRESIGN_EXPIRY", "600").to_i
+  end
+
+  def get_expiry
+    ENV.fetch("S3_GET_PRESIGN_EXPIRY", "900").to_i
   end
 
   def env_prefix
