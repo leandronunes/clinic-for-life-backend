@@ -65,3 +65,6 @@
 .DS_Store
 Thumbs.db
 db/test.sqlite3
+
+# WakaTime local project name override (personal time tracking, not a team convention)
+.wakatime-project
