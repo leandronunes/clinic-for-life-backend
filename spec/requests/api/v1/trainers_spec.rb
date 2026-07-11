@@ -11,20 +11,60 @@ RSpec.describe "Api::V1::Trainers", type: :request do
       expect(response).to have_http_status(:ok)
       expect(json_body["meta"]["total"]).to be >= 2
     end
-  end
 
-  describe "GET /api/v1/trainers/search" do
-    it "filters active trainers by query" do
+    it "does not filter by status when the param is absent" do
       create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Outro", status: "blocked")
-      get "/api/v1/trainers/search", params: { query: "rafael" }, headers: auth_headers(admin)
+      create(:trainer, name: "Marina Souza", status: "inactive")
+      get "/api/v1/trainers", headers: auth_headers(admin)
+
+      names = json_body["data"].map { |t| t["name"] }
+      expect(names).to include("Rafael Monteiro", "Marina Souza")
+    end
+
+    it "filters trainers by a single status" do
+      create(:trainer, name: "Rafael Monteiro", status: "active")
+      create(:trainer, name: "Marina Souza", status: "inactive")
+      get "/api/v1/trainers", params: { status: "active" }, headers: auth_headers(admin)
 
       names = json_body["data"].map { |t| t["name"] }
       expect(names).to include("Rafael Monteiro")
-      expect(names).not_to include("Outro")
+      expect(names).not_to include("Marina Souza")
     end
 
-    it "returns active trainers when query is blank" do
+    it "filters trainers by multiple comma-separated statuses" do
+      create(:trainer, name: "Rafael Monteiro", status: "active")
+      create(:trainer, name: "Carlos Eduardo", status: "blocked")
+      create(:trainer, name: "Marina Souza", status: "inactive")
+      get "/api/v1/trainers", params: { status: "active,blocked" }, headers: auth_headers(admin)
+
+      names = json_body["data"].map { |t| t["name"] }
+      expect(names).to include("Rafael Monteiro", "Carlos Eduardo")
+      expect(names).not_to include("Marina Souza")
+    end
+  end
+
+  describe "GET /api/v1/trainers/search" do
+    it "filters trainers by query" do
+      create(:trainer, name: "Rafael Monteiro", status: "active")
+      create(:trainer, name: "Outro Rafael", status: "blocked")
+      get "/api/v1/trainers/search", params: { query: "rafael" }, headers: auth_headers(admin)
+
+      names = json_body["data"].map { |t| t["name"] }
+      expect(names).to include("Rafael Monteiro", "Outro Rafael")
+    end
+
+    it "combines query and status filters" do
+      create(:trainer, name: "Rafael Monteiro", status: "active")
+      create(:trainer, name: "Rafael Blocked", status: "blocked")
+      get "/api/v1/trainers/search", params: { query: "rafael", status: "active" },
+                                      headers: auth_headers(admin)
+
+      names = json_body["data"].map { |t| t["name"] }
+      expect(names).to include("Rafael Monteiro")
+      expect(names).not_to include("Rafael Blocked")
+    end
+
+    it "returns trainers when query is blank" do
       create(:trainer, status: "active")
       get "/api/v1/trainers/search", headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)

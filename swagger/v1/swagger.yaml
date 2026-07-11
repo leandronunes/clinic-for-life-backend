@@ -365,6 +365,14 @@ paths:
       tags: [Trainers]
       summary: Lista personal trainers
       operationId: listTrainers
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+          description: >-
+            Filtra por status. Aceita um valor único ("active") ou múltiplos
+            separados por vírgula ("active,blocked"). Sem o parâmetro, retorna
+            trainers de qualquer status.
       responses:
         "200":
           description: Lista de trainers
@@ -409,13 +417,20 @@ paths:
   /api/v1/trainers/search:
     get:
       tags: [Trainers]
-      summary: Busca rápida de trainers ativos (autocomplete)
+      summary: Busca rápida de trainers (autocomplete)
       operationId: searchTrainers
       parameters:
         - name: query
           in: query
           schema: { type: string }
           description: Filtra por nome, CREF ou e-mail (case-insensitive)
+        - name: status
+          in: query
+          schema: { type: string }
+          description: >-
+            Filtra por status. Aceita um valor único ("active") ou múltiplos
+            separados por vírgula ("active,blocked"). Sem o parâmetro, retorna
+            trainers de qualquer status.
       responses:
         "200":
           description: Até 8 resultados
