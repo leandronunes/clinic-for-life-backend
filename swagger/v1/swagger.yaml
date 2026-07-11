@@ -178,6 +178,36 @@ paths:
                   data: { $ref: "#/components/schemas/User" }
         "401":
           $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Auth]
+      summary: Atualiza o nome/e-mail do usuário autenticado
+      operationId: updateCurrentUser
+      description: >-
+        Qualquer papel autenticado pode atualizar o próprio nome/e-mail.
+        `role` e as associações (`trainer_id`/`student_id`) não são
+        aceitos por este endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
 
   /api/v1/dashboard/kpis:
     get:

@@ -199,4 +199,57 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "PATCH /api/v1/auth/me" do
+    it "lets an admin update their own name and email" do
+      user = create(:user, :admin, name: "Old Name", email: "old@email.com")
+      patch "/api/v1/auth/me", params: { name: "New Name", email: "new@email.com" },
+                                headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["name"]).to eq("New Name")
+      expect(json_body["data"]["email"]).to eq("new@email.com")
+      expect(user.reload.name).to eq("New Name")
+    end
+
+    it "lets a personal update their own name and email" do
+      user = create(:user, :personal)
+      patch "/api/v1/auth/me", params: { name: "Personal Renamed" }, headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.name).to eq("Personal Renamed")
+    end
+
+    it "lets a student update their own name and email" do
+      user = create(:user, :student_account)
+      patch "/api/v1/auth/me", params: { name: "Student Renamed" }, headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.name).to eq("Student Renamed")
+    end
+
+    it "rejects a duplicate e-mail" do
+      create(:user, :admin, email: "taken@email.com")
+      user = create(:user, :personal)
+      patch "/api/v1/auth/me", params: { email: "taken@email.com" }, headers: auth_headers(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "ignores an attempt to change role or associations" do
+      user = create(:user, :student_account)
+      other_trainer = create(:trainer)
+      patch "/api/v1/auth/me", params: { role: "admin", trainer_id: other_trainer.id },
+                                headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq("student")
+      expect(user.trainer_id).to be_nil
+    end
+
+    it "rejects requests without a token" do
+      patch "/api/v1/auth/me", params: { name: "No Auth" }
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end
