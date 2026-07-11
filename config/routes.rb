@@ -18,6 +18,7 @@ Rails.application.routes.draw do
       post "auth/google",   to: "auth#google_auth"
       get   "auth/me",      to: "auth#me"
       patch "auth/me",      to: "auth#update_me"
+      patch "auth/password", to: "auth#update_password"
 
       # Dashboard
       get "dashboard/kpis",     to: "dashboard#kpis"

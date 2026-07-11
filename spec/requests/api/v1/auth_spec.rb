@@ -252,4 +252,81 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "PATCH /api/v1/auth/password" do
+    let(:new_password) { "N3w@Str0ngPass" }
+
+    it "lets an admin change their own password" do
+      user = create(:user, :admin, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: new_password,
+                      password_confirmation: new_password },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.authenticate(new_password)).to be_truthy
+    end
+
+    it "lets a personal change their own password" do
+      user = create(:user, :personal, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: new_password,
+                      password_confirmation: new_password },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.authenticate(new_password)).to be_truthy
+    end
+
+    it "lets a student change their own password" do
+      user = create(:user, :student_account, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: new_password,
+                      password_confirmation: new_password },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.authenticate(new_password)).to be_truthy
+    end
+
+    it "rejects a wrong current password" do
+      user = create(:user, :admin, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "wrong-password", password: new_password,
+                      password_confirmation: new_password },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(user.reload.authenticate("Str0ng@Pass")).to be_truthy
+    end
+
+    it "rejects a weak new password" do
+      user = create(:user, :admin, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: "short",
+                      password_confirmation: "short" },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.authenticate("Str0ng@Pass")).to be_truthy
+    end
+
+    it "rejects a mismatched password confirmation" do
+      user = create(:user, :admin, password: "Str0ng@Pass")
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: new_password,
+                      password_confirmation: "Different@123" },
+            headers: auth_headers(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.authenticate("Str0ng@Pass")).to be_truthy
+    end
+
+    it "rejects requests without a token" do
+      patch "/api/v1/auth/password",
+            params: { current_password: "Str0ng@Pass", password: new_password,
+                      password_confirmation: new_password }
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end
