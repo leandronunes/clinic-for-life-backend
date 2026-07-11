@@ -16,7 +16,6 @@ module Api
       def create
         workout = @student.workouts.new(workout_params)
         workout.status ||= "active"
-        workout.trainer_name ||= current_user.name
         workout.position = workout_params[:position].presence&.to_i ||
                            @student.workouts.active.maximum(:position).to_i + 1
 
@@ -97,10 +96,17 @@ module Api
         student_user = @student.user
         return if student_user.blank?
 
+        trainer_name = @student.trainer_name
+        body = if trainer_name.present?
+                 "O seu personal #{trainer_name} criou um novo treino para você."
+        else
+                 "Um novo treino foi criado para você."
+        end
+
         PushNotificationJob.perform_later(
           student_user.id,
           title: "Novo treino criado!",
-          body: "O seu personal #{workout.trainer_name} criou um novo treino para você.",
+          body: body,
           url: "/aluno?workout=#{workout.id}"
         )
       end
@@ -123,7 +129,7 @@ module Api
       end
 
       def workout_params
-        params.permit(:title, :focus, :status, :position, :trainer_name)
+        params.permit(:title, :focus, :status, :position)
       end
 
       def create_exercises(workout)

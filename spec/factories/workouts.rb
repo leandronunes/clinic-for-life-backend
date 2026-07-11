@@ -5,7 +5,6 @@ FactoryBot.define do
     focus { "Push" }
     status { "active" }
     sequence(:position) { |n| n }
-    trainer_name { "Rafael Monteiro" }
 
     trait :archived do
       status { "archived" }
