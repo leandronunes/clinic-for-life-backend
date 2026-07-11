@@ -22,6 +22,24 @@ module PactStates
           end
         end
 
+        provider_state "at least one active trainer exists, alongside an inactive one" do
+          set_up do
+            clean_database!
+            FactoryBot.create(:trainer, name: "Ana Personal", status: "active")
+            FactoryBot.create(:trainer, name: "Marina Inativa", status: "inactive")
+            PactStateContext.as(FactoryBot.create(:user, :admin))
+          end
+        end
+
+        provider_state "an active trainer matching the search query exists, alongside a blocked one" do
+          set_up do
+            clean_database!
+            FactoryBot.create(:trainer, name: "Ana Personal", status: "active")
+            FactoryBot.create(:trainer, name: "Ana Bloqueada", status: "blocked")
+            PactStateContext.as(FactoryBot.create(:user, :admin))
+          end
+        end
+
         provider_state "a trainer with id #{PactStates::Trainers::SHOW_ID} exists" do
           set_up do
             clean_database!

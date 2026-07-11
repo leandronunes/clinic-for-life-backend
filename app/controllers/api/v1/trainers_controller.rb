@@ -3,17 +3,17 @@ module Api
     class TrainersController < BaseController
       before_action :require_admin_for_write, only: %i[create update destroy]
 
-      # GET /api/v1/trainers
+      # GET /api/v1/trainers?status=active or ?status=active,blocked
       def index
-        trainers = Trainer.order(:name)
+        trainers = filter_by_status(Trainer.order(:name))
         render_data(trainers.map { |trainer| TrainerSerializer.new(trainer).as_json },
                     meta: { total: trainers.size })
       end
 
-      # GET /api/v1/trainers/search?query=
+      # GET /api/v1/trainers/search?query=&status=active
       def search
         query = params[:query].to_s.strip.downcase
-        trainers = Trainer.where(status: "active")
+        trainers = filter_by_status(Trainer.all)
         if query.present?
           trainers = trainers.where(
             "lower(name) LIKE :q OR lower(cref) LIKE :q OR lower(email) LIKE :q",
@@ -55,6 +55,13 @@ module Api
       end
 
       private
+
+      # Accepts a single status ("active") or a comma-separated list
+      # ("active,blocked"). Absent/blank param means no filtering.
+      def filter_by_status(scope)
+        statuses = params[:status].to_s.split(",").map(&:strip).reject(&:blank?)
+        statuses.present? ? scope.where(status: statuses) : scope
+      end
 
       def trainer_params
         params.permit(:name, :cpf, :cref, :email, :phone, :status, :avatar_url)
