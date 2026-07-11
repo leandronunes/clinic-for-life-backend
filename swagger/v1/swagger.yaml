@@ -2121,7 +2121,6 @@ components:
         status: { $ref: "#/components/schemas/WorkoutStatus" }
         created_at: { type: string, format: date }
         archived_at: { type: string, format: date, nullable: true }
-        trainer_name: { type: string, nullable: true }
         exercises:
           type: array
           items: { $ref: "#/components/schemas/Exercise" }
@@ -2137,10 +2136,6 @@ components:
         position:
           type: integer
           description: "Opcional; se omitido, é calculado automaticamente (último + 1)"
-        trainer_name:
-          type: string
-          nullable: true
-          description: "Opcional; se omitido, usa o nome do usuário autenticado"
 
     Exercise:
       type: object

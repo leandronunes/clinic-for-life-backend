@@ -12,7 +12,6 @@ class WorkoutSerializer
       status: @workout.status,
       created_at: @workout.created_at&.to_date&.iso8601,
       archived_at: @workout.archived_at&.to_date&.iso8601,
-      trainer_name: @workout.trainer_name,
       exercises: @workout.exercises.map { |exercise| ExerciseSerializer.new(exercise).as_json }
     }
   end

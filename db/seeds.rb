@@ -158,7 +158,6 @@ ActiveRecord::Base.transaction do
       w.position = data[:position]
       w.focus = data[:focus]
       w.status = status
-      w.trainer_name = rafael.name
       w.created_at = data[:created_at]
       w.archived_at = data[:archived_at]
     end

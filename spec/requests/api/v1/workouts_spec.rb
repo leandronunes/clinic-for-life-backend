@@ -66,14 +66,40 @@ RSpec.describe "Api::V1::Workouts", type: :request do
       end.to have_enqueued_job(PushNotificationJob)
     end
 
-    it "mentions the trainer's name in the push notification body" do
+    it "mentions the student's current trainer name in the push notification body" do
       student_user
       params = { title: "Push Day", focus: "Push", status: "active" }
       expect do
         post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(personal)
       end.to have_enqueued_job(PushNotificationJob).with(
         student_user.id,
-        hash_including(body: "O seu personal #{personal.name} criou um novo treino para você.")
+        hash_including(body: "O seu personal #{trainer.name} criou um novo treino para você.")
+      )
+    end
+
+    it "mentions the student's current trainer even when a different role creates the workout" do
+      admin = create(:user, :admin)
+      student_user
+      params = { title: "Push Day", focus: "Push", status: "active" }
+      expect do
+        post "/api/v1/students/#{student.id}/workouts", params: params, headers: auth_headers(admin)
+      end.to have_enqueued_job(PushNotificationJob).with(
+        student_user.id,
+        hash_including(body: "O seu personal #{trainer.name} criou um novo treino para você.")
+      )
+    end
+
+    it "falls back to a generic message when the student has no trainer" do
+      admin = create(:user, :admin)
+      untrained_student = create(:student, trainer: nil)
+      untrained_user = create(:user, :student_account, student: untrained_student)
+      params = { title: "Push Day", focus: "Push", status: "active" }
+      expect do
+        post "/api/v1/students/#{untrained_student.id}/workouts", params: params,
+                                                                    headers: auth_headers(admin)
+      end.to have_enqueued_job(PushNotificationJob).with(
+        untrained_user.id,
+        hash_including(body: "Um novo treino foi criado para você.")
       )
     end
 
