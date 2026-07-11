@@ -19,7 +19,7 @@ class ExerciseSerializer
       distance_unit: @exercise.distance_unit,
       hr_zone: @exercise.hr_zone,
       heart_rate_bpm: @exercise.heart_rate_bpm,
-      video_url: @exercise.video_url,
+      video_url: S3Presigner.presign_get_for(@exercise.video_url),
       notes: @exercise.notes
     }
   end

@@ -2079,7 +2079,11 @@ components:
         created_at: { type: string, format: date-time }
         images:
           type: object
-          description: Mapa slot → URL da imagem (apenas slots preenchidos)
+          description: >-
+            Mapa slot → URL da imagem (apenas slots preenchidos). Uploads
+            para o bucket S3 vêm como URL assinada de curta duração
+            (expira — ver S3_GET_PRESIGN_EXPIRY); busque o recurso de novo
+            para renovar.
           additionalProperties: { type: string, format: uri }
 
     BioimpedanceMeasurement:
@@ -2120,7 +2124,13 @@ components:
         id: { type: string }
         measurement_id: { type: string, nullable: true }
         taken_on: { type: string, format: date }
-        image_url: { type: string, format: uri }
+        image_url:
+          type: string
+          format: uri
+          description: >-
+            URL assinada de curta duração para uploads no bucket S3 (expira
+            — ver S3_GET_PRESIGN_EXPIRY); busque o recurso de novo para
+            renovar.
 
     WorkoutStatus:
       type: string
@@ -2163,7 +2173,14 @@ components:
         load_kg: { type: number, nullable: true }
         rest_seconds: { type: integer }
         muscle_group: { type: string, nullable: true }
-        video_url: { type: string, format: uri, nullable: true }
+        video_url:
+          type: string
+          format: uri
+          nullable: true
+          description: >-
+            Link do YouTube ou, para uploads no bucket S3, uma URL assinada
+            de curta duração (expira — ver S3_GET_PRESIGN_EXPIRY); busque o
+            recurso de novo para renovar.
         notes: { type: string, nullable: true }
 
     ExerciseInput:
@@ -2188,7 +2205,13 @@ components:
         id: { type: string }
         name: { type: string }
         description: { type: string, nullable: true }
-        file_url: { type: string, format: uri }
+        file_url:
+          type: string
+          format: uri
+          description: >-
+            URL assinada de curta duração para uploads no bucket S3 (expira
+            — ver S3_GET_PRESIGN_EXPIRY); busque o recurso de novo para
+            renovar.
         content_type: { type: string, nullable: true }
         size: { type: integer, nullable: true, description: "bytes" }
         uploaded_at: { type: string, format: date-time }
