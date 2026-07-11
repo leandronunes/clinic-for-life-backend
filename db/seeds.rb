@@ -202,18 +202,17 @@ ActiveRecord::Base.transaction do
   # Evolution photos (before & after)
   # ---------------------------------------------------------------------------
   photos = [
-    { taken_on: "2025-09-01", image_url: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=800&fit=crop", weight_kg: 72.4, fat_percentage: 31.2, muscle_mass_kg: 28.1 },
-    { taken_on: "2025-12-01", image_url: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=800&fit=crop", weight_kg: 70.2, fat_percentage: 28.4, muscle_mass_kg: 29.4 },
-    { taken_on: "2026-03-01", image_url: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=800&fit=crop", weight_kg: 68.2, fat_percentage: 25.7, muscle_mass_kg: 30.8 },
-    { taken_on: "2026-06-01", image_url: "https://images.unsplash.com/photo-1594381898411-846e7d193883?w=600&h=800&fit=crop", weight_kg: 66.4, fat_percentage: 23.1, muscle_mass_kg: 32.0 }
+    { taken_on: "2025-09-01", image_url: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=800&fit=crop" },
+    { taken_on: "2025-12-01", image_url: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=800&fit=crop" },
+    { taken_on: "2026-03-01", image_url: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&h=800&fit=crop" },
+    { taken_on: "2026-06-01", image_url: "https://images.unsplash.com/photo-1594381898411-846e7d193883?w=600&h=800&fit=crop" }
   ]
 
   photos.each do |photo|
+    measurement = julia.bioimpedance_measurements.find_by!(measured_on: photo[:taken_on])
     julia.evolution_photos.find_or_create_by!(taken_on: photo[:taken_on]) do |p|
       p.image_url = photo[:image_url]
-      p.weight_kg = photo[:weight_kg]
-      p.fat_percentage = photo[:fat_percentage]
-      p.muscle_mass_kg = photo[:muscle_mass_kg]
+      p.bioimpedance_measurement = measurement
     end
   end
 
