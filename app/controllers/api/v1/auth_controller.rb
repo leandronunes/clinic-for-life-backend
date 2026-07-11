@@ -102,10 +102,28 @@ module Api
         render_data(UserSerializer.new(current_user).as_json)
       end
 
+      # PATCH /api/v1/auth/password
+      def update_password
+        unless current_user.authenticate(update_password_params[:current_password])
+          return render json: { error: "Senha atual incorreta" }, status: :unauthorized
+        end
+
+        current_user.update!(
+          password: update_password_params[:password],
+          password_confirmation: update_password_params[:password_confirmation]
+        )
+        audit!("user.change_password", record: current_user)
+        render_data({ message: "Senha atualizada com sucesso" })
+      end
+
       private
 
       def auth_me_params
         params.permit(:name, :email)
+      end
+
+      def update_password_params
+        params.permit(:current_password, :password, :password_confirmation)
       end
 
       def session_payload(user)
