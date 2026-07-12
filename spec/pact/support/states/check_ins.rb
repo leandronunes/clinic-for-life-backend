@@ -3,6 +3,7 @@ module PactStates
     STUDENT_ID = 2301
     WORKOUT_ID = 2311
     EXERCISE_ID = 2321
+    OTHER_EXERCISE_ID = 2322
     CHECK_IN_ID = 2331
     HISTORY_WORKOUT_ID = 2341
     HISTORY_CHECK_IN_ID = 2351
@@ -21,6 +22,11 @@ module PactStates
           end
         end
 
+        # Two exercises on the workout, so marking #EXERCISE_ID alone leaves
+        # the check-in genuinely in progress (auto-finish only kicks in once
+        # every exercise on the workout is checked) — a single-exercise
+        # workout would make the "mark one exercise" interaction indistinguishable
+        # from "finish the check-in".
         provider_state "student #{STUDENT_ID} has an in-progress check-in #{CHECK_IN_ID} on workout " \
                        "#{WORKOUT_ID} with exercise #{EXERCISE_ID} pending" do
           set_up do
@@ -29,6 +35,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student, status: "active")
             FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout)
+            FactoryBot.create(:exercise, id: OTHER_EXERCISE_ID, workout: workout)
             FactoryBot.create(:workout_check_in, id: CHECK_IN_ID, workout: workout, student: student,
                                                   status: "in_progress")
             PactStateContext.as(FactoryBot.create(:user, :admin))
