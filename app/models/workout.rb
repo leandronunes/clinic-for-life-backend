@@ -3,6 +3,7 @@ class Workout < ApplicationRecord
 
   belongs_to :student
   has_many :exercises, -> { order(:position, :id) }, dependent: :destroy
+  has_many :workout_check_ins, dependent: :destroy
 
   validates :title, presence: true
   validates :status, presence: true, inclusion: { in: STATUSES }

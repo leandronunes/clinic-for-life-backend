@@ -11,6 +11,8 @@ class Student < ApplicationRecord
   has_one :anamnesis, dependent: :destroy
   has_many :workouts, dependent: :destroy
   has_many :exams, dependent: :destroy
+  has_many :workout_check_ins, dependent: :destroy
+  has_many :feedbacks, dependent: :destroy
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },

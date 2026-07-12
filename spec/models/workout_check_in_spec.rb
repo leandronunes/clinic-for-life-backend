@@ -1,0 +1,78 @@
+require "rails_helper"
+
+RSpec.describe WorkoutCheckIn do
+  it "is invalid with a status outside STATUSES" do
+    check_in = build(:workout_check_in, status: "bogus")
+    expect(check_in).not_to be_valid
+  end
+
+  it "rejects a second in-progress check-in for the same workout at the DB level" do
+    workout = create(:workout)
+    create(:workout_check_in, workout: workout, status: "in_progress")
+
+    expect do
+      create(:workout_check_in, workout: workout, status: "in_progress")
+    end.to raise_error(ActiveRecord::RecordNotUnique)
+  end
+
+  it "allows a new in-progress check-in once the previous one is completed" do
+    workout = create(:workout)
+    create(:workout_check_in, :completed, workout: workout)
+
+    expect { create(:workout_check_in, workout: workout, status: "in_progress") }.not_to raise_error
+  end
+
+  describe "#exercises_total / #exercises_completed_count" do
+    it "counts the workout's live exercises and this check-in's completed ones" do
+      workout = create(:workout)
+      create_list(:exercise, 3, workout: workout)
+      check_in = create(:workout_check_in, workout: workout)
+      create(:exercise_check_in, workout_check_in: check_in, exercise: workout.exercises.first)
+
+      expect(check_in.exercises_total).to eq(3)
+      expect(check_in.exercises_completed_count).to eq(1)
+    end
+  end
+
+  describe "#finish!" do
+    it "marks the check-in completed and stamps completed_at" do
+      check_in = create(:workout_check_in)
+      check_in.finish!
+      expect(check_in.status).to eq("completed")
+      expect(check_in.completed_at).to be_present
+    end
+  end
+
+  describe "#maybe_auto_finish!" do
+    it "does nothing while exercises remain unchecked" do
+      workout = create(:workout)
+      create_list(:exercise, 2, workout: workout)
+      check_in = create(:workout_check_in, workout: workout)
+      create(:exercise_check_in, workout_check_in: check_in, exercise: workout.exercises.first)
+
+      check_in.maybe_auto_finish!
+
+      expect(check_in.reload.status).to eq("in_progress")
+    end
+
+    it "finishes the check-in once every exercise is checked" do
+      workout = create(:workout)
+      create_list(:exercise, 2, workout: workout)
+      check_in = create(:workout_check_in, workout: workout)
+      workout.exercises.each { |ex| create(:exercise_check_in, workout_check_in: check_in, exercise: ex) }
+
+      check_in.maybe_auto_finish!
+
+      expect(check_in.reload.status).to eq("completed")
+    end
+
+    it "does not touch an already-completed check-in" do
+      check_in = create(:workout_check_in, :completed)
+      completed_at = check_in.completed_at
+
+      check_in.maybe_auto_finish!
+
+      expect(check_in.reload.completed_at).to eq(completed_at)
+    end
+  end
+end

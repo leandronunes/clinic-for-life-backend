@@ -4,6 +4,7 @@ class Exercise < ApplicationRecord
   HR_ZONES = (1..5).to_a.freeze
 
   belongs_to :workout
+  has_many :exercise_check_ins, dependent: :destroy
 
   validates :name, presence: true
   validates :kind, presence: true, inclusion: { in: KINDS }

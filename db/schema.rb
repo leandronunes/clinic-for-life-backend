@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_11_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -121,6 +121,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_120000) do
     t.index ["student_id"], name: "index_exams_on_student_id"
   end
 
+  create_table "exercise_check_ins", force: :cascade do |t|
+    t.datetime "completed_at", null: false
+    t.datetime "created_at", null: false
+    t.bigint "exercise_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "workout_check_in_id", null: false
+    t.index ["exercise_id"], name: "index_exercise_check_ins_on_exercise_id"
+    t.index ["workout_check_in_id", "exercise_id"], name: "index_exercise_check_ins_on_check_in_and_exercise", unique: true
+    t.index ["workout_check_in_id"], name: "index_exercise_check_ins_on_workout_check_in_id"
+  end
+
   create_table "exercises", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "distance_unit"
@@ -151,6 +162,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_120000) do
     t.string "specialty"
     t.datetime "updated_at", null: false
     t.index ["anamnesis_id"], name: "index_external_professionals_on_anamnesis_id"
+  end
+
+  create_table "feedbacks", force: :cascade do |t|
+    t.bigint "author_id"
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.text "message", null: false
+    t.bigint "student_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_feedbacks_on_author_id"
+    t.index ["student_id", "created_at"], name: "index_feedbacks_on_student_id_and_created_at"
+    t.index ["student_id"], name: "index_feedbacks_on_student_id"
   end
 
   create_table "partners", force: :cascade do |t|
@@ -253,6 +276,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_120000) do
     t.index ["trainer_id"], name: "index_users_on_trainer_id"
   end
 
+  create_table "workout_check_ins", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "status", default: "in_progress", null: false
+    t.bigint "student_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "workout_id", null: false
+    t.index ["student_id", "created_at"], name: "index_workout_check_ins_on_student_id_and_created_at"
+    t.index ["student_id"], name: "index_workout_check_ins_on_student_id"
+    t.index ["workout_id"], name: "index_workout_check_ins_on_workout_id"
+    t.index ["workout_id"], name: "index_workout_check_ins_on_workout_in_progress", unique: true, where: "((status)::text = 'in_progress'::text)"
+  end
+
   create_table "workouts", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -277,12 +313,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_11_120000) do
   add_foreign_key "evolution_photos", "bioimpedance_measurements"
   add_foreign_key "evolution_photos", "students"
   add_foreign_key "exams", "students"
+  add_foreign_key "exercise_check_ins", "exercises"
+  add_foreign_key "exercise_check_ins", "workout_check_ins"
   add_foreign_key "exercises", "workouts"
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
+  add_foreign_key "feedbacks", "students"
+  add_foreign_key "feedbacks", "users", column: "author_id"
   add_foreign_key "push_subscriptions", "users"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"
   add_foreign_key "users", "students"
   add_foreign_key "users", "trainers"
+  add_foreign_key "workout_check_ins", "students"
+  add_foreign_key "workout_check_ins", "workouts"
   add_foreign_key "workouts", "students"
 end

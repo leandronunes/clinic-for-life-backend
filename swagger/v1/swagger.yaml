@@ -46,6 +46,10 @@ tags:
     description: Treinos do aluno
   - name: Exercises
     description: Exercícios de um treino
+  - name: CheckIns
+    description: Check-in e validação de treino (assiduidade)
+  - name: Feedbacks
+    description: Recados do personal ao aluno (elogio/correção/incentivo)
   - name: Exams
     description: Exames do aluno
   - name: Partners
@@ -288,6 +292,28 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/DashboardActivityPoint" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/dashboard/attendance:
+    get:
+      tags: [Dashboard]
+      summary: Resumo agregado de assiduidade (check-ins de treino)
+      operationId: getDashboardAttendance
+      description: Requer papel `admin` ou `personal`.
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Resumo de assiduidade
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AttendanceSummary" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1567,6 +1593,226 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+    post:
+      tags: [CheckIns]
+      summary: 'Inicia um check-in ("Iniciar treino")'
+      operationId: startCheckIn
+      description: >-
+        Idempotente por natureza dos dados: só existe um check-in em
+        andamento por treino por vez (garantido por índice único no banco).
+      responses:
+        "201":
+          description: Check-in iniciado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Treino arquivado, ou já existe um check-in em andamento
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/current:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+    get:
+      tags: [CheckIns]
+      summary: Check-in em andamento deste treino, se houver
+      operationId: getCurrentCheckIn
+      responses:
+        "200":
+          description: "Check-in em andamento, ou `data: null` se não houver nenhum"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/WorkoutCheckIn"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/finish:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [CheckIns]
+      summary: 'Finaliza um check-in ("Finalizar treino")'
+      operationId: finishCheckIn
+      description: Manual — permite conclusão parcial (nem todo exercício precisa estar marcado).
+      responses:
+        "200":
+          description: Check-in finalizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Check-in já finalizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/exercises/{exercise_id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+      - name: exercise_id
+        in: path
+        required: true
+        schema: { type: string }
+        description: ID do exercício
+    patch:
+      tags: [CheckIns]
+      summary: Marca ou desmarca um exercício como concluído
+      operationId: toggleCheckInExercise
+      description: >-
+        Ao marcar o último exercício pendente, o check-in é finalizado
+        automaticamente (mesmo efeito de `finish`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [completed]
+              properties:
+                completed: { type: boolean }
+      responses:
+        "200":
+          description: Check-in atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Check-in já finalizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/check_ins:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [CheckIns]
+      summary: Histórico de check-ins do aluno (todos os treinos)
+      operationId: listCheckInHistory
+      responses:
+        "200":
+          description: Check-ins mais recentes primeiro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/feedbacks:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Feedbacks]
+      summary: Lista os recados (elogio/correção/incentivo) recebidos pelo aluno
+      operationId: listFeedbacks
+      responses:
+        "200":
+          description: Recados mais recentes primeiro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Feedback" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Feedbacks]
+      summary: Envia um recado ao aluno
+      operationId: createFeedback
+      description: Requer papel `admin` ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, message]
+              properties:
+                kind: { $ref: "#/components/schemas/FeedbackKind" }
+                message: { type: string, maxLength: 500 }
+      responses:
+        "201":
+          description: Recado enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Feedback" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
   /api/v1/students/{student_id}/exams:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
@@ -2199,6 +2445,38 @@ components:
           type: integer
           description: "Opcional; se omitido, é calculado automaticamente"
 
+    WorkoutCheckInStatus:
+      type: string
+      enum: [in_progress, completed]
+
+    WorkoutCheckIn:
+      type: object
+      properties:
+        id: { type: string }
+        workout_id: { type: string }
+        workout_title: { type: string }
+        status: { $ref: "#/components/schemas/WorkoutCheckInStatus" }
+        exercises_completed: { type: integer }
+        exercises_total: { type: integer }
+        completed_exercise_ids:
+          type: array
+          items: { type: string }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+
+    FeedbackKind:
+      type: string
+      enum: [elogio, correcao, incentivo]
+
+    Feedback:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/FeedbackKind" }
+        message: { type: string }
+        author_name: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
     Exam:
       type: object
       properties:
@@ -2288,3 +2566,11 @@ components:
         label: { type: string, format: date }
         workouts: { type: integer }
         assessments: { type: integer }
+
+    AttendanceSummary:
+      type: object
+      properties:
+        total_check_ins: { type: integer }
+        completed_check_ins: { type: integer }
+        students_with_check_in: { type: integer }
+        active_students: { type: integer }
