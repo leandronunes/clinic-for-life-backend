@@ -68,4 +68,48 @@ RSpec.describe "Api::V1::Dashboard", type: :request do
       expect(json_body["data"].length).to eq(31) # 30 days ago..today = 31 dates
     end
   end
+
+  describe "GET /api/v1/dashboard/attendance" do
+    it "returns the attendance summary" do
+      student = create(:student, status: "active")
+      workout = create(:workout, student: student)
+      create(:workout_check_in, :completed, workout: workout, student: student)
+      create(:workout_check_in, workout: create(:workout, student: student), student: student)
+
+      get "/api/v1/dashboard/attendance", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:ok)
+      data = json_body["data"]
+      expect(data["total_check_ins"]).to eq(2)
+      expect(data["completed_check_ins"]).to eq(1)
+      expect(data["students_with_check_in"]).to eq(1)
+    end
+
+    it "excludes check-ins older than the selected range" do
+      student = create(:student, status: "active")
+      workout = create(:workout, student: student)
+      create(:workout_check_in, :completed, workout: workout, student: student, created_at: 60.days.ago)
+
+      get "/api/v1/dashboard/attendance", params: { range: "week" }, headers: auth_headers(admin)
+
+      expect(json_body["data"]["total_check_ins"]).to eq(0)
+    end
+
+    it "scopes counts to the personal's own portfolio" do
+      own = create(:student, trainer: trainer, status: "active")
+      other = create(:student, status: "active")
+      create(:workout_check_in, :completed, workout: create(:workout, student: own), student: own)
+      create(:workout_check_in, :completed, workout: create(:workout, student: other), student: other)
+
+      get "/api/v1/dashboard/attendance", headers: auth_headers(personal)
+
+      expect(json_body["data"]["total_check_ins"]).to eq(1)
+    end
+
+    it "forbids a student" do
+      student_user = create(:user, :student_account)
+      get "/api/v1/dashboard/attendance", headers: auth_headers(student_user)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
 end

@@ -24,6 +24,19 @@ module Api
         render_data(cards)
       end
 
+      # GET /api/v1/dashboard/attendance
+      def attendance
+        scope = student_scope
+        check_ins = WorkoutCheckIn.where(student: scope).where(created_at: range_days.days.ago..)
+
+        render_data({
+          total_check_ins: check_ins.count,
+          completed_check_ins: check_ins.completed.count,
+          students_with_check_in: check_ins.distinct.count(:student_id),
+          active_students: scope.where(status: "active").count
+        })
+      end
+
       # GET /api/v1/dashboard/activity
       def activity
         scope      = student_scope

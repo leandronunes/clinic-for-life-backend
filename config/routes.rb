@@ -21,8 +21,9 @@ Rails.application.routes.draw do
       patch "auth/password", to: "auth#update_password"
 
       # Dashboard
-      get "dashboard/kpis",     to: "dashboard#kpis"
-      get "dashboard/activity", to: "dashboard#activity"
+      get "dashboard/kpis",       to: "dashboard#kpis"
+      get "dashboard/activity",   to: "dashboard#activity"
+      get "dashboard/attendance", to: "dashboard#attendance"
 
       # Uploads — presigned S3 URLs
       post "uploads/presign", to: "uploads#presign"
@@ -69,10 +70,23 @@ Rails.application.routes.draw do
           resources :exercises, only: %i[create update destroy] do
             collection { patch :reorder }
           end
+
+          # Check-ins — "Iniciar treino" / "Finalizar treino" / marcar exercícios
+          resources :check_ins, only: %i[create], controller: "workout_check_ins" do
+            member do
+              post :finish
+              patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
+            end
+            collection { get :current }
+          end
         end
 
         # Exams
         resources :exams, only: %i[index create destroy]
+
+        # Check-in history (all workouts) and trainer feedback (elogio/correção/incentivo)
+        get "check_ins", to: "workout_check_ins#index"
+        resources :feedbacks, only: %i[index create]
       end
 
       # Bioimpedance import (CSV)
