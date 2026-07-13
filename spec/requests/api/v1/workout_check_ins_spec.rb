@@ -121,6 +121,39 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
     end
   end
 
+  describe "POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/view" do
+    it "stamps viewed_at on a completed check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/view",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["viewed_at"]).to be_present
+      expect(check_in.reload.viewed_at).to be_present
+    end
+
+    it "is idempotent when called twice" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/view",
+           headers: auth_headers(personal)
+      first_viewed_at = check_in.reload.viewed_at
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/view",
+           headers: auth_headers(personal)
+
+      expect(check_in.reload.viewed_at).to eq(first_viewed_at)
+    end
+
+    it "forbids a personal outside the student's portfolio" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      other_personal = create(:user, :personal)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/view",
+           headers: auth_headers(other_personal)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe "PATCH .../check_ins/:id/exercises/:exercise_id" do
     let!(:exercise_a) { create(:exercise, workout: workout) }
     let!(:exercise_b) { create(:exercise, workout: workout) }

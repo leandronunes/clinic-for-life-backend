@@ -8,6 +8,7 @@ class User < ApplicationRecord
   has_many :audit_logs, dependent: :nullify
   has_many :push_subscriptions, dependent: :destroy
   has_many :authored_feedbacks, class_name: "Feedback", foreign_key: :author_id, dependent: :nullify
+  has_many :authored_reactions, class_name: "WorkoutReaction", foreign_key: :author_id, dependent: :nullify
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_111632) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -171,9 +171,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.text "message", null: false
     t.bigint "student_id", null: false
     t.datetime "updated_at", null: false
+    t.bigint "workout_check_in_id", null: false
     t.index ["author_id"], name: "index_feedbacks_on_author_id"
     t.index ["student_id", "created_at"], name: "index_feedbacks_on_student_id_and_created_at"
     t.index ["student_id"], name: "index_feedbacks_on_student_id"
+    t.index ["workout_check_in_id"], name: "index_feedbacks_on_workout_check_in_id"
   end
 
   create_table "partners", force: :cascade do |t|
@@ -282,11 +284,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.string "status", default: "in_progress", null: false
     t.bigint "student_id", null: false
     t.datetime "updated_at", null: false
+    t.datetime "viewed_at"
     t.bigint "workout_id", null: false
     t.index ["student_id", "created_at"], name: "index_workout_check_ins_on_student_id_and_created_at"
     t.index ["student_id"], name: "index_workout_check_ins_on_student_id"
     t.index ["workout_id"], name: "index_workout_check_ins_on_workout_id"
     t.index ["workout_id"], name: "index_workout_check_ins_on_workout_in_progress", unique: true, where: "((status)::text = 'in_progress'::text)"
+  end
+
+  create_table "workout_reactions", force: :cascade do |t|
+    t.bigint "author_id"
+    t.datetime "created_at", null: false
+    t.string "emoji", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "workout_check_in_id", null: false
+    t.index ["author_id"], name: "index_workout_reactions_on_author_id"
+    t.index ["workout_check_in_id", "author_id"], name: "index_workout_reactions_on_check_in_and_author", unique: true
+    t.index ["workout_check_in_id"], name: "index_workout_reactions_on_workout_check_in_id"
   end
 
   create_table "workouts", force: :cascade do |t|
@@ -297,6 +311,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.string "status", default: "active", null: false
     t.bigint "student_id", null: false
     t.string "title", null: false
+    t.string "trainer_name"
     t.datetime "updated_at", null: false
     t.index ["student_id", "position"], name: "index_workouts_on_student_active_position", unique: true, where: "((status)::text = 'active'::text)"
     t.index ["student_id", "position"], name: "index_workouts_on_student_archived_position", unique: true, where: "((status)::text = 'archived'::text)"
@@ -319,6 +334,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
   add_foreign_key "feedbacks", "students"
   add_foreign_key "feedbacks", "users", column: "author_id"
+  add_foreign_key "feedbacks", "workout_check_ins"
   add_foreign_key "push_subscriptions", "users"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"
@@ -326,5 +342,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
   add_foreign_key "users", "trainers"
   add_foreign_key "workout_check_ins", "students"
   add_foreign_key "workout_check_ins", "workouts"
+  add_foreign_key "workout_reactions", "users", column: "author_id"
+  add_foreign_key "workout_reactions", "workout_check_ins"
   add_foreign_key "workouts", "students"
 end

@@ -15,7 +15,10 @@ module Api
 
       # POST /api/v1/students/:student_id/feedbacks
       def create
-        feedback = @student.feedbacks.create!(feedback_params.merge(author: current_user))
+        check_in = @student.workout_check_ins.find(params[:workout_check_in_id])
+        return render_not_completed unless check_in.status == "completed"
+
+        feedback = @student.feedbacks.create!(feedback_params.merge(author: current_user, workout_check_in: check_in))
         audit!("feedback.create", record: feedback)
         notify_student_of_feedback(feedback)
         render_data(FeedbackSerializer.new(feedback).as_json, status: :created)
@@ -25,6 +28,11 @@ module Api
 
       def feedback_params
         params.permit(:kind, :message)
+      end
+
+      def render_not_completed
+        render json: { error: "Só é possível dar feedback em um treino concluído" },
+               status: :unprocessable_content
       end
 
       # Best-effort push ao aluno — mesmo padrão de

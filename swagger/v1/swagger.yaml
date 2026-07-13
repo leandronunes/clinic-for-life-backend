@@ -48,8 +48,16 @@ tags:
     description: Exercícios de um treino
   - name: CheckIns
     description: Check-in e validação de treino (assiduidade)
+  - name: CompletedCheckIns
+    description: >-
+      Treinos concluídos do portfólio do personal/admin, para revisão e envio
+      de feedback/reação
   - name: Feedbacks
-    description: Recados do personal ao aluno (elogio/correção/incentivo)
+    description: >-
+      Feedback do personal (elogio/correção/incentivo) sobre um treino
+      concluído específico
+  - name: WorkoutReactions
+    description: Reação de emoji do personal a um treino concluído
   - name: Exams
     description: Exames do aluno
   - name: Partners
@@ -314,6 +322,31 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/AttendanceSummary" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/completed_check_ins:
+    get:
+      tags: [CompletedCheckIns]
+      summary: Lista os treinos concluídos do portfólio do personal/admin
+      operationId: listCompletedCheckIns
+      description: >-
+        Requer papel `admin` ou `personal`. Não é escopado por aluno — um
+        personal vê os check-ins concluídos de todos os seus alunos; um admin
+        vê todos. Ordenado por `completed_at` decrescente.
+      responses:
+        "200":
+          description: Check-ins concluídos mais recentes primeiro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkoutCheckIn" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1684,6 +1717,79 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/view:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [CheckIns]
+      summary: Marca um check-in como visualizado pelo personal/admin
+      operationId: viewCheckIn
+      description: Idempotente — chamar novamente não altera `viewed_at`.
+      responses:
+        "200":
+          description: Check-in marcado como visualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{check_in_id}/reaction:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - name: check_in_id
+        in: path
+        required: true
+        schema: { type: string }
+        description: ID do check-in
+    post:
+      tags: [WorkoutReactions]
+      summary: Reage com um emoji a um treino concluído
+      operationId: createWorkoutReaction
+      description: >-
+        Upsert: reagir novamente substitui a reação anterior do mesmo autor
+        neste check-in em vez de acumular duplicatas. Requer papel `admin`
+        ou `personal`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emoji]
+              properties:
+                emoji: { type: string }
+      responses:
+        "201":
+          description: Reação registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutReaction" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Só é possível reagir a um treino concluído
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/exercises/{exercise_id}:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
@@ -1782,22 +1888,25 @@ paths:
           $ref: "#/components/responses/NotFound"
     post:
       tags: [Feedbacks]
-      summary: Envia um recado ao aluno
+      summary: Envia feedback sobre um treino concluído do aluno
       operationId: createFeedback
-      description: Requer papel `admin` ou `personal`.
+      description: >-
+        Requer papel `admin` ou `personal`. O check-in referenciado precisa
+        pertencer a este aluno e estar `completed`.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [kind, message]
+              required: [workout_check_in_id, kind, message]
               properties:
+                workout_check_in_id: { type: string }
                 kind: { $ref: "#/components/schemas/FeedbackKind" }
                 message: { type: string, maxLength: 500 }
       responses:
         "201":
-          description: Recado enviado
+          description: Feedback enviado
           content:
             application/json:
               schema:
@@ -1809,9 +1918,15 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Check-in não encontrado para este aluno
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422":
-          $ref: "#/components/responses/UnprocessableEntity"
+          description: Kind inválido, mensagem em branco/muito longa, ou check-in ainda não concluído
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/students/{student_id}/exams:
     parameters:
@@ -2455,6 +2570,8 @@ components:
         id: { type: string }
         workout_id: { type: string }
         workout_title: { type: string }
+        student_id: { type: string }
+        student_name: { type: string }
         status: { $ref: "#/components/schemas/WorkoutCheckInStatus" }
         exercises_completed: { type: integer }
         exercises_total: { type: integer }
@@ -2463,6 +2580,17 @@ components:
           items: { type: string }
         started_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time, nullable: true }
+        viewed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Preenchido quando o personal/admin visualiza este check-in concluído"
+        feedbacks:
+          type: array
+          items: { $ref: "#/components/schemas/Feedback" }
+        reactions:
+          type: array
+          items: { $ref: "#/components/schemas/WorkoutReaction" }
 
     FeedbackKind:
       type: string
@@ -2472,8 +2600,17 @@ components:
       type: object
       properties:
         id: { type: string }
+        workout_check_in_id: { type: string }
         kind: { $ref: "#/components/schemas/FeedbackKind" }
         message: { type: string }
+        author_name: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    WorkoutReaction:
+      type: object
+      properties:
+        id: { type: string }
+        emoji: { type: string }
         author_name: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
 

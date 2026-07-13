@@ -8,7 +8,9 @@ module Api
 
       # GET /api/v1/students/:student_id/check_ins
       def index
-        check_ins = @student.workout_check_ins.includes(:workout, :exercise_check_ins)
+        check_ins = @student.workout_check_ins
+                             .includes(:workout, :student, :exercise_check_ins,
+                                       feedbacks: :author, workout_reactions: :author)
                              .order(created_at: :desc)
         render_data(check_ins.map { |c| WorkoutCheckInSerializer.new(c).as_json })
       end
@@ -38,6 +40,13 @@ module Api
         check_in.finish!
         audit!("workout_check_in.finish", record: check_in)
         notify_trainer_of_completion(check_in)
+        render_data(WorkoutCheckInSerializer.new(check_in).as_json)
+      end
+
+      # POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/view
+      def view
+        check_in = @workout.workout_check_ins.find(params[:id])
+        check_in.mark_viewed!
         render_data(WorkoutCheckInSerializer.new(check_in).as_json)
       end
 
