@@ -3,8 +3,6 @@ module Api
     class FeedbacksController < BaseController
       include StudentScoped
 
-      KIND_LABELS = { "elogio" => "Elogio", "correcao" => "Correção", "incentivo" => "Incentivo" }.freeze
-
       before_action :require_write_access!, only: :create
 
       # GET /api/v1/students/:student_id/feedbacks
@@ -27,7 +25,7 @@ module Api
       private
 
       def feedback_params
-        params.permit(:kind, :message)
+        params.permit(:message)
       end
 
       def render_not_completed
@@ -41,10 +39,9 @@ module Api
         student_user = @student.user
         return if student_user.blank?
 
-        kind_label = KIND_LABELS.fetch(feedback.kind, "Feedback")
         PushNotificationJob.perform_later(
           student_user.id,
-          title: "#{kind_label} do seu Personal",
+          title: "Feedback do seu Personal",
           body: feedback.message.truncate(120),
           url: "/aluno/assiduidade"
         )

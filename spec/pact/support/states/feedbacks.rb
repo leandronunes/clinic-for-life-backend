@@ -19,7 +19,7 @@ module PactStates
             check_in = FactoryBot.create(:workout_check_in, id: CHECK_IN_ID, workout: workout, student: student,
                                                              status: "completed", completed_at: Time.current)
             FactoryBot.create(:feedback, id: FEEDBACK_ID, student: student, author: personal_user,
-                                         workout_check_in: check_in, kind: "elogio",
+                                         workout_check_in: check_in,
                                          message: "Mandou muito bem no treino de hoje!")
             PactStateContext.as(FactoryBot.create(:user, :admin))
           end

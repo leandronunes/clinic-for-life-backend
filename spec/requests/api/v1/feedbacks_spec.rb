@@ -46,7 +46,7 @@ RSpec.describe "Api::V1::Feedbacks", type: :request do
   end
 
   describe "POST /api/v1/students/:student_id/feedbacks" do
-    let(:valid_params) { { kind: "elogio", message: "Muito bem no treino de hoje!", workout_check_in_id: nil } }
+    let(:valid_params) { { message: "Muito bem no treino de hoje!", workout_check_in_id: nil } }
 
     before { valid_params[:workout_check_in_id] = check_in.id }
 
@@ -55,7 +55,6 @@ RSpec.describe "Api::V1::Feedbacks", type: :request do
 
       expect(response).to have_http_status(:created)
       expect(json_body["data"]["author_name"]).to eq(personal.name)
-      expect(json_body["data"]["kind"]).to eq("elogio")
       expect(json_body["data"]["workout_check_in_id"]).to eq(check_in.id.to_s)
     end
 
@@ -67,12 +66,6 @@ RSpec.describe "Api::V1::Feedbacks", type: :request do
     it "forbids a student from sending feedback" do
       post "/api/v1/students/#{student.id}/feedbacks", params: valid_params, headers: auth_headers(student_user)
       expect(response).to have_http_status(:forbidden)
-    end
-
-    it "returns 422 for an invalid kind" do
-      post "/api/v1/students/#{student.id}/feedbacks", params: valid_params.merge(kind: "bogus"),
-                                                          headers: auth_headers(personal)
-      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "returns 422 for a blank message" do
@@ -104,13 +97,13 @@ RSpec.describe "Api::V1::Feedbacks", type: :request do
       end.not_to have_enqueued_job(PushNotificationJob)
     end
 
-    it "enqueues a push notification to the student with a kind-specific title" do
+    it "enqueues a push notification to the student" do
       student_user
       expect do
         post "/api/v1/students/#{student.id}/feedbacks", params: valid_params, headers: auth_headers(personal)
       end.to have_enqueued_job(PushNotificationJob).with(
         student_user.id,
-        hash_including(title: "Elogio do seu Personal", url: "/aluno/assiduidade")
+        hash_including(title: "Feedback do seu Personal", url: "/aluno/assiduidade")
       )
     end
   end

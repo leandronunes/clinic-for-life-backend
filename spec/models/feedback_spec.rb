@@ -1,10 +1,6 @@
 require "rails_helper"
 
 RSpec.describe Feedback do
-  it "is invalid with a kind outside KINDS" do
-    expect(build(:feedback, kind: "bogus")).not_to be_valid
-  end
-
   it "is invalid without a message" do
     expect(build(:feedback, message: nil)).not_to be_valid
   end

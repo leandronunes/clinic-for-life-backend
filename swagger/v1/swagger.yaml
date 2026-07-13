@@ -1899,10 +1899,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [workout_check_in_id, kind, message]
+              required: [workout_check_in_id, message]
               properties:
                 workout_check_in_id: { type: string }
-                kind: { $ref: "#/components/schemas/FeedbackKind" }
                 message: { type: string, maxLength: 500 }
       responses:
         "201":
@@ -2592,16 +2591,11 @@ components:
           type: array
           items: { $ref: "#/components/schemas/WorkoutReaction" }
 
-    FeedbackKind:
-      type: string
-      enum: [elogio, correcao, incentivo]
-
     Feedback:
       type: object
       properties:
         id: { type: string }
         workout_check_in_id: { type: string }
-        kind: { $ref: "#/components/schemas/FeedbackKind" }
         message: { type: string }
         author_name: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
