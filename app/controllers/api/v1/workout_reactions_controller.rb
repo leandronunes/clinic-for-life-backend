@@ -3,6 +3,7 @@ module Api
     class WorkoutReactionsController < BaseController
       include StudentScoped
 
+      before_action :require_write_access!, only: :create
       before_action :set_workout
 
       # POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:check_in_id/reaction

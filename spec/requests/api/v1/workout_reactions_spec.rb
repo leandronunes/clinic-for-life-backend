@@ -46,6 +46,13 @@ RSpec.describe "Api::V1::WorkoutReactions", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
+    it "forbids a student from reacting, even to their own check-in" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/reaction",
+           params: { emoji: "🔥" }, headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
     it "does not enqueue a push notification when the student has no linked user" do
       expect do
         post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/reaction",
