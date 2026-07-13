@@ -16,6 +16,9 @@ gem "jwt", "~> 3.2"
 # CSV parsing for bioimpedance imports (removed from Ruby default gems in 3.4+)
 gem "csv"
 
+# PDF text extraction for bioimpedance imports (InBody/mynutri reports)
+gem "pdf-reader", "~> 2.15"
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
@@ -67,6 +70,11 @@ group :development, :test do
 
   # One-liner matchers for common Rails validations/associations
   gem "shoulda-matchers", "~> 8.0"
+
+  # Generates synthetic PDF fixtures for MynutriPdfParser specs
+  gem "prawn", require: false
+  # prawn depends on matrix, removed from Ruby default gems in 3.1+
+  gem "matrix", require: false
 end
 
 group :test do

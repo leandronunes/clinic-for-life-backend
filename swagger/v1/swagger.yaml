@@ -1214,9 +1214,13 @@ paths:
   /api/v1/bioimpedance/import:
     post:
       tags: [Bioimpedance Import]
-      summary: Importa medições de bioimpedância a partir de um CSV do InBody
+      summary: Importa medições de bioimpedância a partir de um CSV ou PDF do InBody/mynutri
       operationId: importBioimpedanceMeasurements
-      description: Requer papel `admin` ou `personal` dono do aluno.
+      description: >-
+        Requer papel `admin` ou `personal` dono do aluno. Aceita o CSV exportado
+        pelo InBody (uma ou mais medições) ou um relatório PDF do InBody gerado
+        pela plataforma mynutri (extrai apenas a medição atual do relatório).
+        O tipo de arquivo é detectado automaticamente pelo conteúdo enviado.
       requestBody:
         required: true
         content:
@@ -1228,10 +1232,10 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: "Arquivo CSV exportado pelo InBody (alternativo a `content`)"
+                  description: "Arquivo CSV ou PDF exportado pelo InBody/mynutri (alternativo a `content`)"
                 content:
                   type: string
-                  description: "Conteúdo do CSV já lido como texto (alternativo a `file`)"
+                  description: "Conteúdo do CSV já lido como texto (alternativo a `file`; não aplicável a PDF)"
                 student_id: { type: string }
                 filename: { type: string }
       responses:
@@ -1258,7 +1262,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "422":
-          description: Arquivo ausente, aluno não encontrado ou CSV inválido/vazio
+          description: Arquivo ausente, aluno não encontrado ou CSV/PDF inválido, vazio ou não reconhecido como InBody
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
