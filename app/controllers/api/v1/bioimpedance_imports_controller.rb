@@ -2,8 +2,10 @@ require "csv"
 
 module Api
   module V1
-    # Handles CSV import of bioimpedance measurements exported by InBody devices.
-    # The student is identified by the student_id param — the CSV has no patient info.
+    # Handles CSV/PDF import of bioimpedance measurements exported by InBody devices
+    # (raw CSV export, or a PDF report from the mynutri platform).
+    # The student is identified by the student_id param — neither file has patient info
+    # reliable enough to match against our records.
     class BioimpedanceImportsController < BaseController
       before_action :require_write_access!
 
@@ -16,15 +18,15 @@ module Api
         return render_import_error("Aluno não encontrado") unless student
         return render json: { error: "Forbidden" }, status: :forbidden unless authorize_for_import(student)
 
-        rows = InbodyCsvParser.parse(content)
-        return render_import_error("Formato de CSV inválido ou não reconhecido como InBody") if rows.nil?
+        rows = parse_content(content)
+        return render_import_error("Formato de arquivo inválido ou não reconhecido como InBody") if rows.nil?
         return render_import_error("Nenhuma linha válida encontrada no arquivo") if rows.empty?
 
         result = persist_rows(student, rows)
 
         BioimpedanceImport.create!(
           trainer_id:     current_user.trainer_id,
-          filename:       import_params[:filename].presence || "import.csv",
+          filename:       import_params[:filename].presence || default_filename(content),
           total_rows:     rows.size,
           imported_count: result[:imported],
           errors_log:     result[:errors]
@@ -42,6 +44,18 @@ module Api
       end
 
       private
+
+      def parse_content(content)
+        if MynutriPdfParser.pdf_format?(content)
+          MynutriPdfParser.parse(content)
+        else
+          InbodyCsvParser.parse(content)
+        end
+      end
+
+      def default_filename(content)
+        MynutriPdfParser.pdf_format?(content) ? "import.pdf" : "import.csv"
+      end
 
       def persist_rows(student, rows)
         imported = 0

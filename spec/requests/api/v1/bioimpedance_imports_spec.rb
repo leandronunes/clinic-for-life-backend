@@ -135,5 +135,53 @@ RSpec.describe "Api::V1::BioimpedanceImports", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    context "with a mynutri/InBody PDF report" do
+      it "imports the current measurement and returns preview" do
+        expect do
+          post "/api/v1/bioimpedance/import",
+               params: { file: pdf_upload(mynutri_pdf), student_id: student.id },
+               headers: auth_headers(personal)
+        end.to change(BioimpedanceMeasurement, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        data = json_body["data"]
+        expect(data["imported"]).to eq(1)
+        expect(data["errors"]).to be_empty
+        expect(data["preview"].first).to include(
+          "weight_kg"      => 54.4,
+          "muscle_mass_kg" => 24.20,
+          "fat_percentage" => 20.0,
+          "bmi"            => 22.40
+        )
+      end
+
+      it "parses the date from the dd/mm/yyyy report header" do
+        post "/api/v1/bioimpedance/import",
+             params: { file: pdf_upload(mynutri_pdf(date: "15/05/2026")), student_id: student.id },
+             headers: auth_headers(personal)
+
+        expect(student.bioimpedance_measurements.last.measured_on).to eq(Date.new(2026, 5, 15))
+      end
+
+      it "skips a duplicate date and reports it as an error" do
+        create(:bioimpedance_measurement, student: student, measured_on: "2026-05-15")
+        post "/api/v1/bioimpedance/import",
+             params: { file: pdf_upload(mynutri_pdf(date: "15/05/2026")), student_id: student.id },
+             headers: auth_headers(personal)
+
+        data = json_body["data"]
+        expect(data["imported"]).to eq(0)
+        expect(data["errors"].first).to match(/already been taken/)
+      end
+
+      it "returns 422 for a PDF that is not recognized as an InBody/mynutri report" do
+        post "/api/v1/bioimpedance/import",
+             params: { file: pdf_upload(non_inbody_pdf), student_id: student.id },
+             headers: auth_headers(personal)
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
   end
 end
