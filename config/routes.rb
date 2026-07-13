@@ -25,6 +25,10 @@ Rails.application.routes.draw do
       get "dashboard/activity",   to: "dashboard#activity"
       get "dashboard/attendance", to: "dashboard#attendance"
 
+      # Completed workouts across the current trainer's/admin's portfolio,
+      # for reviewing and giving feedback/reactions — not student-scoped.
+      get "completed_check_ins", to: "completed_check_ins#index"
+
       # Uploads — presigned S3 URLs
       post "uploads/presign", to: "uploads#presign"
 
@@ -75,18 +79,19 @@ Rails.application.routes.draw do
           resources :check_ins, only: %i[create], controller: "workout_check_ins" do
             member do
               post :finish
+              post :view
               patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
             end
             collection { get :current }
+            resources :feedbacks, only: %i[create update destroy], controller: "check_in_feedbacks"
           end
         end
 
         # Exams
         resources :exams, only: %i[index create destroy]
 
-        # Check-in history (all workouts) and trainer feedback (elogio/correção/incentivo)
+        # Check-in history (all workouts)
         get "check_ins", to: "workout_check_ins#index"
-        resources :feedbacks, only: %i[index create]
       end
 
       # Bioimpedance import (CSV)

@@ -7,6 +7,8 @@ module PactStates
     CHECK_IN_ID = 2331
     HISTORY_WORKOUT_ID = 2341
     HISTORY_CHECK_IN_ID = 2351
+    VIEW_WORKOUT_ID = 2342
+    VIEW_CHECK_IN_ID = 2352
 
     def self.definitions
       proc do
@@ -52,6 +54,19 @@ module PactStates
             FactoryBot.create(:workout_check_in, id: HISTORY_CHECK_IN_ID, workout: workout, student: student,
                                                   status: "completed", completed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :admin))
+          end
+        end
+
+        provider_state "student #{STUDENT_ID} has a completed check-in #{VIEW_CHECK_IN_ID} on " \
+                       "workout #{VIEW_WORKOUT_ID} to mark as viewed" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: VIEW_WORKOUT_ID, student: student, title: "Treino A")
+            FactoryBot.create(:workout_check_in, id: VIEW_CHECK_IN_ID, workout: workout, student: student,
+                                                  status: "completed", completed_at: Time.current)
+            PactStateContext.as(FactoryBot.create(:user, :personal, trainer: trainer))
           end
         end
       end

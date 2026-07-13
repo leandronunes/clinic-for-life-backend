@@ -75,4 +75,22 @@ RSpec.describe WorkoutCheckIn do
       expect(check_in.reload.completed_at).to eq(completed_at)
     end
   end
+
+  describe "#mark_viewed!" do
+    it "stamps viewed_at when not yet viewed" do
+      check_in = create(:workout_check_in, :completed)
+      check_in.mark_viewed!
+      expect(check_in.reload.viewed_at).to be_present
+    end
+
+    it "is idempotent once already viewed" do
+      check_in = create(:workout_check_in, :completed)
+      check_in.mark_viewed!
+      first_viewed_at = check_in.reload.viewed_at
+
+      check_in.mark_viewed!
+
+      expect(check_in.reload.viewed_at).to eq(first_viewed_at)
+    end
+  end
 end

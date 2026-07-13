@@ -1,4 +1,4 @@
-class FeedbackSerializer
+class CheckInFeedbackSerializer
   def initialize(feedback)
     @feedback = feedback
   end
@@ -6,7 +6,8 @@ class FeedbackSerializer
   def as_json(*)
     {
       id: @feedback.id.to_s,
-      kind: @feedback.kind,
+      workout_check_in_id: @feedback.workout_check_in_id.to_s,
+      emoji: @feedback.emoji,
       message: @feedback.message,
       author_name: @feedback.author&.name,
       created_at: @feedback.created_at&.iso8601

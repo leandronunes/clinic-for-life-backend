@@ -4,6 +4,7 @@ class WorkoutCheckIn < ApplicationRecord
   belongs_to :workout
   belongs_to :student
   has_many :exercise_check_ins, dependent: :destroy
+  has_many :check_in_feedbacks, dependent: :destroy
 
   validates :status, presence: true, inclusion: { in: STATUSES }
 
@@ -26,5 +27,9 @@ class WorkoutCheckIn < ApplicationRecord
     return unless status == "in_progress"
 
     finish! if exercises_total.positive? && exercises_completed_count >= exercises_total
+  end
+
+  def mark_viewed!
+    update!(viewed_at: Time.current) unless viewed_at
   end
 end

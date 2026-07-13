@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_135718) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -97,6 +97,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.index ["biomechanical_assessment_id"], name: "index_biomechanical_images_on_biomechanical_assessment_id"
   end
 
+  create_table "check_in_feedbacks", force: :cascade do |t|
+    t.bigint "author_id"
+    t.datetime "created_at", null: false
+    t.string "emoji"
+    t.text "message"
+    t.datetime "updated_at", null: false
+    t.bigint "workout_check_in_id", null: false
+    t.index ["author_id"], name: "index_check_in_feedbacks_on_author_id"
+    t.index ["workout_check_in_id"], name: "index_check_in_feedbacks_on_workout_check_in_id"
+  end
+
   create_table "evolution_photos", force: :cascade do |t|
     t.bigint "bioimpedance_measurement_id"
     t.datetime "created_at", null: false
@@ -162,18 +173,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.string "specialty"
     t.datetime "updated_at", null: false
     t.index ["anamnesis_id"], name: "index_external_professionals_on_anamnesis_id"
-  end
-
-  create_table "feedbacks", force: :cascade do |t|
-    t.bigint "author_id"
-    t.datetime "created_at", null: false
-    t.string "kind", null: false
-    t.text "message", null: false
-    t.bigint "student_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["author_id"], name: "index_feedbacks_on_author_id"
-    t.index ["student_id", "created_at"], name: "index_feedbacks_on_student_id_and_created_at"
-    t.index ["student_id"], name: "index_feedbacks_on_student_id"
   end
 
   create_table "partners", force: :cascade do |t|
@@ -282,6 +281,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.string "status", default: "in_progress", null: false
     t.bigint "student_id", null: false
     t.datetime "updated_at", null: false
+    t.datetime "viewed_at"
     t.bigint "workout_id", null: false
     t.index ["student_id", "created_at"], name: "index_workout_check_ins_on_student_id_and_created_at"
     t.index ["student_id"], name: "index_workout_check_ins_on_student_id"
@@ -297,6 +297,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
     t.string "status", default: "active", null: false
     t.bigint "student_id", null: false
     t.string "title", null: false
+    t.string "trainer_name"
     t.datetime "updated_at", null: false
     t.index ["student_id", "position"], name: "index_workouts_on_student_active_position", unique: true, where: "((status)::text = 'active'::text)"
     t.index ["student_id", "position"], name: "index_workouts_on_student_archived_position", unique: true, where: "((status)::text = 'archived'::text)"
@@ -310,6 +311,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
   add_foreign_key "bioimpedance_measurements", "students"
   add_foreign_key "biomechanical_assessments", "students"
   add_foreign_key "biomechanical_images", "biomechanical_assessments"
+  add_foreign_key "check_in_feedbacks", "users", column: "author_id"
+  add_foreign_key "check_in_feedbacks", "workout_check_ins"
   add_foreign_key "evolution_photos", "bioimpedance_measurements"
   add_foreign_key "evolution_photos", "students"
   add_foreign_key "exams", "students"
@@ -317,8 +320,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_141953) do
   add_foreign_key "exercise_check_ins", "workout_check_ins"
   add_foreign_key "exercises", "workouts"
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
-  add_foreign_key "feedbacks", "students"
-  add_foreign_key "feedbacks", "users", column: "author_id"
   add_foreign_key "push_subscriptions", "users"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"
