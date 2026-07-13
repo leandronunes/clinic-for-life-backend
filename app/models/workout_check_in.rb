@@ -4,8 +4,7 @@ class WorkoutCheckIn < ApplicationRecord
   belongs_to :workout
   belongs_to :student
   has_many :exercise_check_ins, dependent: :destroy
-  has_many :feedbacks, dependent: :destroy
-  has_many :workout_reactions, dependent: :destroy
+  has_many :check_in_feedbacks, dependent: :destroy
 
   validates :status, presence: true, inclusion: { in: STATUSES }
 

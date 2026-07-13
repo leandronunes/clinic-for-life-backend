@@ -83,16 +83,15 @@ Rails.application.routes.draw do
               patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
             end
             collection { get :current }
-            resource :reaction, only: %i[create], controller: "workout_reactions"
+            resources :feedbacks, only: %i[create update destroy], controller: "check_in_feedbacks"
           end
         end
 
         # Exams
         resources :exams, only: %i[index create destroy]
 
-        # Check-in history (all workouts) and trainer feedback (elogio/correção/incentivo)
+        # Check-in history (all workouts)
         get "check_ins", to: "workout_check_ins#index"
-        resources :feedbacks, only: %i[index create]
       end
 
       # Bioimpedance import (CSV)

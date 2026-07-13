@@ -17,8 +17,7 @@ class WorkoutCheckInSerializer
       started_at: @check_in.created_at&.iso8601,
       completed_at: @check_in.completed_at&.iso8601,
       viewed_at: @check_in.viewed_at&.iso8601,
-      feedbacks: @check_in.feedbacks.map { |f| FeedbackSerializer.new(f).as_json },
-      reactions: @check_in.workout_reactions.map { |r| WorkoutReactionSerializer.new(r).as_json }
+      feedbacks: @check_in.check_in_feedbacks.map { |f| CheckInFeedbackSerializer.new(f).as_json }
     }
   end
 end

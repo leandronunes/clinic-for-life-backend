@@ -10,7 +10,7 @@ module Api
       def index
         check_ins = @student.workout_check_ins
                              .includes(:workout, :student, :exercise_check_ins,
-                                       feedbacks: :author, workout_reactions: :author)
+                                       check_in_feedbacks: :author)
                              .order(created_at: :desc)
         render_data(check_ins.map { |c| WorkoutCheckInSerializer.new(c).as_json })
       end
