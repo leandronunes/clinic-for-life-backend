@@ -68,14 +68,14 @@ module Api
         return if student_user.blank?
 
         title, body = if feedback.emoji.present? && feedback.message.present?
-                        [ "Feedback do seu Personal",
-                          "#{feedback.emoji} #{feedback.message.truncate(100)}" ]
-                      elsif feedback.emoji.present?
-                        [ "Seu personal reagiu ao seu treino!",
-                          "#{feedback.emoji} no treino \"#{@check_in.workout.title}\"." ]
-                      else
-                        [ "Feedback do seu Personal", feedback.message.truncate(120) ]
-                      end
+          [ "Feedback do seu Personal",
+            "#{feedback.emoji} #{feedback.message.truncate(100)}" ]
+        elsif feedback.emoji.present?
+          [ "Seu personal reagiu ao seu treino!",
+            "#{feedback.emoji} no treino \"#{@check_in.workout.title}\"." ]
+        else
+          [ "Feedback do seu Personal", feedback.message.truncate(120) ]
+        end
 
         PushNotificationJob.perform_later(
           student_user.id,
