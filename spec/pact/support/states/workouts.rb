@@ -86,6 +86,17 @@ module PactStates
           end
         end
 
+        provider_state "workout #{WORKOUT_ID} for student #{STUDENT_ID} has exercise #{EXERCISE_ID} with notes" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
+            FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout, notes: "Manter postura")
+            PactStateContext.as(FactoryBot.create(:user, :admin))
+          end
+        end
+
         provider_state "workout #{WORKOUT_ID} for student #{STUDENT_ID} has two exercises to reorder" do
           set_up do
             clean_database!
