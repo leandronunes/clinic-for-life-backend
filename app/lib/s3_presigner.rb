@@ -48,6 +48,13 @@ class S3Presigner
   ConfigurationError = Class.new(StandardError)
   InvalidParamsError = Class.new(ArgumentError)
 
+  # Contexts whose upload target is a transient "raw/" key, separate from
+  # the stable public_url — a video-compression Lambda picks up the raw
+  # object (S3 event on the uploads/raw/ prefix) and writes the compressed
+  # result to the final key, which is what public_url already points at
+  # from the very first presign call. No DB update is ever needed.
+  RAW_KEY_CONTEXTS = %w[exercise_video].freeze
+
   # Rewrites `url` into a short-lived presigned GET URL when it points at
   # our own bucket; anything else (a YouTube embed, a fixture URL in
   # tests, or S3 not being configured) is returned unchanged.
@@ -71,17 +78,18 @@ class S3Presigner
     # Use only the base MIME type (strips codecs/params) for extension lookup and presigning
     mime = content_type.to_s.split(";").first.to_s.strip
     ext = EXTENSION_FOR.fetch(mime, "mp4")
-    key = "#{env_prefix}uploads/#{key_scope(context, student_id)}/#{SecureRandom.uuid}.#{ext}"
+    final_key = "#{env_prefix}uploads/#{key_scope(context, student_id)}/#{SecureRandom.uuid}.#{ext}"
+    upload_key = RAW_KEY_CONTEXTS.include?(context) ? raw_key_for(final_key) : final_key
 
     upload_url = presigner.presigned_url(
       :put_object,
       bucket: bucket,
-      key: key,
+      key: upload_key,
       expires_in: expiry,
       content_type: mime
     )
 
-    public_url = "https://#{bucket}.s3.#{region}.amazonaws.com/#{key}"
+    public_url = "https://#{bucket}.s3.#{region}.amazonaws.com/#{final_key}"
 
     { upload_url: upload_url, public_url: public_url }
   end
@@ -116,6 +124,14 @@ class S3Presigner
   # no student (e.g. partner_logo) are namespaced by context alone.
   def key_scope(context, student_id)
     student_id ? "students/#{student_id}/#{context}" : context.to_s
+  end
+
+  # Only the "uploads/" segment moves — env_prefix ("dev/" or "") stays in
+  # front, so a dev-environment raw key becomes "dev/uploads/raw/..." —
+  # intentionally NOT covered by the S3 event trigger (production keys
+  # only, see infra/terraform/s3_notification.tf).
+  def raw_key_for(final_key)
+    final_key.sub("uploads/", "uploads/raw/")
   end
 
   def validate!(content_type:, context:)

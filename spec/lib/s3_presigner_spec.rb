@@ -67,6 +67,76 @@ RSpec.describe S3Presigner do
     end
   end
 
+  describe "#presign for exercise_video" do
+    subject(:result) do
+      presigner.presign(content_type: "video/mp4", context: "exercise_video", student_id: "7")
+    end
+
+    it "targets a raw/ prefixed key for the upload_url, distinct from public_url's key" do
+      result
+      expect(fake_s3_presigner).to have_received(:presigned_url).with(
+        :put_object,
+        hash_including(key: match(%r{^uploads/raw/students/7/exercise_video/[\w-]+\.mp4$}))
+      )
+    end
+
+    it "keeps public_url on the final (non-raw) key" do
+      expect(result[:public_url]).to match(%r{uploads/students/7/exercise_video/[\w-]+\.mp4$})
+      expect(result[:public_url]).not_to include("/raw/")
+    end
+
+    it "uses the same uuid/extension in both the raw upload key and the final public_url" do
+      result
+      raw_key = nil
+      expect(fake_s3_presigner).to have_received(:presigned_url) do |_, opts|
+        raw_key = opts[:key]
+      end
+      final_key = URI.parse(result[:public_url]).path.delete_prefix("/")
+      expect(raw_key).to eq(final_key.sub("uploads/", "uploads/raw/"))
+    end
+
+    context "when Rails.env is development" do
+      before { allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("development")) }
+
+      it "inserts raw/ after uploads/, keeping the dev/ prefix in front" do
+        result
+        expect(fake_s3_presigner).to have_received(:presigned_url).with(
+          :put_object,
+          hash_including(key: match(%r{^dev/uploads/raw/students/7/exercise_video/}))
+        )
+      end
+    end
+  end
+
+  describe "#presign leaves non-exercise_video contexts untouched (regression)" do
+    %w[evolution_photo biomechanical_image exam].each do |ctx|
+      it "never introduces a raw/ segment for #{ctx}" do
+        presigner.presign(content_type: "image/jpeg", context: ctx, student_id: "7")
+
+        expect(fake_s3_presigner).to have_received(:presigned_url).with(
+          :put_object,
+          hash_including(key: match(%r{\A(?!.*/raw/).+\z}))
+        )
+      end
+
+      it "uses the exact same key for upload_url and public_url for #{ctx}" do
+        result = presigner.presign(content_type: "image/jpeg", context: ctx, student_id: "7")
+        expect(fake_s3_presigner).to have_received(:presigned_url) do |_, opts|
+          expect(URI.parse(result[:public_url]).path).to end_with(opts[:key])
+        end
+      end
+    end
+
+    it "partner_logo (no student_id) is also unaffected" do
+      result = presigner.presign(content_type: "image/png", context: "partner_logo")
+      expect(fake_s3_presigner).to have_received(:presigned_url).with(
+        :put_object,
+        hash_including(key: match(%r{\A(?!.*/raw/).+\z}))
+      )
+      expect(result[:public_url]).not_to include("/raw/")
+    end
+  end
+
   describe "#presign_get_for" do
     let(:our_bucket_url) do
       "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/students/7/exercise_video/abc.mp4"

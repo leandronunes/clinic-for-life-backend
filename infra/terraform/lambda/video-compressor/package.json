@@ -1,0 +1,8 @@
+{
+  "name": "video-compressor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "S3-triggered Lambda that compresses an uploaded exercise video with ffmpeg and writes the result to the final (canonical) S3 key.",
+  "type": "module",
+  "main": "index.mjs"
+}
