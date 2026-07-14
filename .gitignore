@@ -68,3 +68,15 @@ db/test.sqlite3
 
 # WakaTime local project name override (personal time tracking, not a team convention)
 .wakatime-project
+
+# Terraform local state/build artifacts — remote state lives in S3 (see
+# infra/terraform/backend.tf); .terraform.lock.hcl IS committed (provider
+# version pinning).
+infra/terraform/.terraform/
+infra/terraform/build/
+infra/terraform/terraform.tfvars
+infra/terraform/tfplan
+*.tfplan
+*.tfstate
+*.tfstate.*
+crash.log

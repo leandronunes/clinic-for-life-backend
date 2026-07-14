@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars (gitignored) if you need to override any default.
+# The ffmpeg Lambda Layer is provisioned automatically by Terraform itself
+# (ffmpeg_layer.tf, deploying the serverlesspub/ffmpeg-aws-lambda-layer SAR
+# application) — no manual ARN lookup needed.

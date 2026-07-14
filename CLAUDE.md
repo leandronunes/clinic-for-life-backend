@@ -114,6 +114,12 @@ render json: { error: "mensagem" }, status: :forbidden
 - Produção **não** é publicada por push em `main` — só por GitHub Release (`gh release create ...`), que dispara `.github/workflows/release.yml`.
 - Esse workflow confere se o commit da release tem todo o CI verde antes de acionar o Deploy Hook do Render — não há branch protection nativa na `main` (repositório privado no plano free), então esse é o gate real.
 
+## Compressão de vídeo de exercício (infraestrutura)
+
+- Ver `docs/video-compression.md` para arquitetura, como aplicar/atualizar via Terraform e troubleshooting.
+- `infra/terraform/` é o **primeiro** código de infraestrutura deste monorepo — o resto da infra AWS (bucket S3, policy) continua console-manual. `terraform apply` é manual/local, não roda em CI.
+- `S3Presigner#presign` gera uma chave "raw" transitória só para `context == "exercise_video"` — a `public_url` sempre aponta para a chave final desde o primeiro request; não crie um segundo fluxo de atualização de `video_url`.
+
 ## Controle de versão
 
 - **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
