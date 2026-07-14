@@ -81,7 +81,7 @@ group :test do
   # SQLite for testing
   gem "sqlite3", ">= 2.1"
   # Code coverage analysis
-  gem "simplecov", "~> 0.22", require: false
+  gem "simplecov", "~> 1.0", require: false
 
   # Consumer-driven contract testing (provider verification against the frontend's pacts)
   # pact/rspec requires the "rspec" meta-gem directly, on top of rspec-rails' own
