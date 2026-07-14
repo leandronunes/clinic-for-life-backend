@@ -56,7 +56,13 @@ module Api
         params.permit(:kind, :name, :sets, :reps, :load_kg, :rest_seconds,
                       :muscle_group, :video_url, :notes, :position,
                       :duration_seconds, :distance_value, :distance_unit,
-                      :hr_zone, :heart_rate_bpm)
+                      :hr_zone, :heart_rate_bpm).tap do |attrs|
+          # The client's `video_url` may be the presigned GET URL echoed back
+          # from a previous read (see ExerciseSerializer) — canonicalize it so
+          # it doesn't get persisted with a query string, and so an unchanged
+          # video isn't mistaken for a new one below (see `old_video_url`).
+          attrs[:video_url] = S3Presigner.canonicalize(attrs[:video_url]) if attrs[:video_url]
+        end
       end
     end
   end
