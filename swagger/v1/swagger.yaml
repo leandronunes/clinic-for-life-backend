@@ -2465,7 +2465,14 @@ components:
           type: string
           description: "Origem da medição: manual, import (CSV) ou InBody (padrão do banco)"
         photo_id: { type: string, nullable: true }
-        photo_url: { type: string, format: uri, nullable: true }
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+          description: >-
+            URL assinada de curta duração para uploads no bucket S3 (expira
+            — ver S3_GET_PRESIGN_EXPIRY); busque o recurso de novo para
+            renovar.
 
     BioimpedanceMeasurementInput:
       type: object

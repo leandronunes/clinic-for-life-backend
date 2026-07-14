@@ -103,6 +103,20 @@ RSpec.describe BioimpedanceMeasurementSerializer do
     expect(json[:weight_kg]).to eq(70.5)
     expect(json[:measured_on]).to eq("2025-09-01")
   end
+
+  it "presigns the associated photo's image_url so the bucket can stay private" do
+    stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-for-life", "AWS_REGION" => "us-east-1"))
+    fake_presigner = instance_double(Aws::S3::Presigner,
+      presigned_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg?X-Amz-Signature=abc")
+    allow(Aws::S3::Presigner).to receive(:new).and_return(fake_presigner)
+    measurement = create(:bioimpedance_measurement)
+    create(:evolution_photo, bioimpedance_measurement: measurement,
+      image_url: "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg")
+
+    json = described_class.new(measurement.reload).as_json
+
+    expect(json[:photo_url]).to include("X-Amz-Signature")
+  end
 end
 
 RSpec.describe EvolutionPhotoSerializer do
