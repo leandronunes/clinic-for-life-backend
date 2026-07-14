@@ -55,6 +55,16 @@ class S3Presigner
     new.presign_get_for(url)
   end
 
+  # Strips any query string from `url`, returning the stable canonical
+  # form when it points at our own bucket. Clients round-trip a presigned
+  # GET URL (from a serializer response) back through create/update params
+  # all the time — without this, that presigned string gets persisted as
+  # the "new" value, and a raw-string comparison against the old canonical
+  # URL treats the same object as if it had changed (see S3Deletable).
+  def self.canonicalize(url)
+    new.canonicalize(url)
+  end
+
   def presign(content_type:, context:, student_id: nil)
     validate!(content_type:, context:)
 
@@ -87,6 +97,15 @@ class S3Presigner
     return url unless url.to_s.start_with?("https://#{bucket}.s3.#{region}.amazonaws.com/")
 
     presigner.presigned_url(:get_object, bucket: bucket, key: extract_key(url), expires_in: expires_in)
+  rescue ConfigurationError
+    url
+  end
+
+  def canonicalize(url)
+    return url if url.blank?
+    return url unless url.to_s.start_with?("https://#{bucket}.s3.#{region}.amazonaws.com/")
+
+    "https://#{bucket}.s3.#{region}.amazonaws.com/#{extract_key(url)}"
   rescue ConfigurationError
     url
   end

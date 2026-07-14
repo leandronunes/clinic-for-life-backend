@@ -73,7 +73,10 @@ RSpec.describe "Api::V1::BiomechanicalAssessments", type: :request do
         allow(presigner).to receive(:delete)
         # The response re-serializes the assessment's images map, which
         # presigns each URL — unrelated to the deletion behavior tested here.
+        # Params canonicalization is a passthrough here too — new_s3_url is
+        # already canonical.
         allow(presigner).to receive(:presign_get_for) { |url| url }
+        allow(presigner).to receive(:canonicalize) { |url| url }
 
         put "/api/v1/students/#{student.id}/biomechanical_assessments/upload",
             params: { slot: "frontal", image_url: new_s3_url },
@@ -91,6 +94,48 @@ RSpec.describe "Api::V1::BiomechanicalAssessments", type: :request do
             headers: auth_headers(personal)
 
         expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when the client echoes back the presigned form of the current image_url" do
+      # Same class of bug as exercises_spec's "echoes back the presigned form
+      # of the current video_url": the frontend's slot preview is fed from a
+      # presigned GET response (BiomechanicalAssessmentSerializer), so a
+      # naive re-upload of "the same slot" could send that presigned string
+      # back — same S3 object, different literal string.
+      let(:canonical_url) { "https://clinic-bucket.s3.us-east-1.amazonaws.com/frontal-old.jpg" }
+      let(:presigned_url_for_same_object) do
+        "#{canonical_url}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=900&X-Amz-Signature=abc"
+      end
+
+      before do
+        stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-bucket", "AWS_REGION" => "us-east-1"))
+        # The response re-serializes the assessment's images map, which
+        # presigns each URL — stub it to a passthrough so this doesn't need
+        # real AWS credentials. #canonicalize is deliberately left
+        # un-stubbed: it's what this context verifies, and it never calls
+        # out to AWS (pure URI parsing).
+        allow_any_instance_of(S3Presigner).to receive(:presign_get_for) { |_instance, url, **_kwargs| url }
+        assessment = create(:biomechanical_assessment, student: student)
+        create(:biomechanical_image, biomechanical_assessment: assessment,
+               slot: "frontal", image_url: canonical_url)
+      end
+
+      it "does not delete the S3 object, since it's still referenced" do
+        expect_any_instance_of(S3Presigner).not_to receive(:delete)
+
+        put "/api/v1/students/#{student.id}/biomechanical_assessments/upload",
+            params: { slot: "frontal", image_url: presigned_url_for_same_object },
+            headers: auth_headers(personal)
+      end
+
+      it "persists the canonical URL, not the presigned one with its query string" do
+        put "/api/v1/students/#{student.id}/biomechanical_assessments/upload",
+            params: { slot: "frontal", image_url: presigned_url_for_same_object },
+            headers: auth_headers(personal)
+
+        image = BiomechanicalImage.find_by(slot: "frontal")
+        expect(image.image_url).to eq(canonical_url)
       end
     end
   end

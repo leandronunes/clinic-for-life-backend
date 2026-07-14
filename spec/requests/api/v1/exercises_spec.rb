@@ -109,8 +109,11 @@ RSpec.describe "Api::V1::Exercises", type: :request do
         allow(S3Presigner).to receive(:new).and_return(presigner)
         allow(presigner).to receive(:delete)
         # The response re-serializes the exercise, which presigns video_url —
-        # unrelated to the deletion behavior this example verifies.
+        # unrelated to the deletion behavior this example verifies. Params
+        # canonicalization is a passthrough here too — new_s3_url is already
+        # canonical.
         allow(presigner).to receive(:presign_get_for) { |url| url }
+        allow(presigner).to receive(:canonicalize) { |url| url }
 
         patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
               params: { video_url: new_s3_url }, headers: auth_headers(personal)
@@ -137,6 +140,42 @@ RSpec.describe "Api::V1::Exercises", type: :request do
 
         patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
               params: { load_kg: 50 }, headers: auth_headers(personal)
+      end
+    end
+
+    context "when the client echoes back the presigned form of the current video_url" do
+      # Reproduces the production incident: the frontend seeds its edit form
+      # from the GET response, which presigns video_url (ExerciseSerializer).
+      # Saving without touching the video field re-sends that presigned
+      # string — same S3 object, different literal string — as `video_url`.
+      let(:canonical_url) { "https://clinic-bucket.s3.us-east-1.amazonaws.com/uploads/old.mp4" }
+      let(:presigned_url_for_same_object) do
+        "#{canonical_url}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=900&X-Amz-Signature=abc"
+      end
+      let(:exercise) { create(:exercise, workout: workout, video_url: canonical_url) }
+
+      before do
+        stub_const("ENV", ENV.to_h.merge("S3_BUCKET" => "clinic-bucket", "AWS_REGION" => "us-east-1"))
+        # The response re-serializes the exercise, which presigns video_url —
+        # stub it to a passthrough so this doesn't need real AWS credentials.
+        # #canonicalize is deliberately left un-stubbed: it's what this
+        # context verifies, and it never calls out to AWS (pure URI parsing).
+        allow_any_instance_of(S3Presigner).to receive(:presign_get_for) { |_instance, url, **_kwargs| url }
+      end
+
+      it "does not delete the S3 object, since it's still referenced" do
+        exercise
+        expect_any_instance_of(S3Presigner).not_to receive(:delete)
+
+        patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
+              params: { video_url: presigned_url_for_same_object }, headers: auth_headers(personal)
+      end
+
+      it "persists the canonical URL, not the presigned one with its query string" do
+        patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
+              params: { video_url: presigned_url_for_same_object }, headers: auth_headers(personal)
+
+        expect(exercise.reload.video_url).to eq(canonical_url)
       end
     end
 

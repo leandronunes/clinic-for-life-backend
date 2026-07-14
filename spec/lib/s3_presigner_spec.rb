@@ -137,4 +137,56 @@ RSpec.describe S3Presigner do
       expect(result).to eq(fake_presigned_url)
     end
   end
+
+  describe "#canonicalize" do
+    let(:canonical_url) do
+      "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/students/7/exercise_video/abc.mp4"
+    end
+    let(:presigned_url_for_same_object) { "#{canonical_url}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc" }
+
+    it "strips the query string from a presigned URL pointing at our own bucket" do
+      expect(presigner.canonicalize(presigned_url_for_same_object)).to eq(canonical_url)
+    end
+
+    it "is idempotent on an already-canonical URL" do
+      expect(presigner.canonicalize(canonical_url)).to eq(canonical_url)
+    end
+
+    it "resolves to the same key as presign_get_for's own extract_key — a client echoing " \
+       "back a presigned URL must canonicalize to the same object it was presigned from" do
+      expect(presigner.canonicalize(presigned_url_for_same_object)).to eq(presigner.canonicalize(canonical_url))
+    end
+
+    it "returns nil unchanged" do
+      expect(presigner.canonicalize(nil)).to be_nil
+    end
+
+    it "returns a blank string unchanged" do
+      expect(presigner.canonicalize("")).to eq("")
+    end
+
+    it "leaves a YouTube URL untouched" do
+      youtube_url = "https://www.youtube.com/embed/abc123"
+      expect(presigner.canonicalize(youtube_url)).to eq(youtube_url)
+    end
+
+    it "leaves a URL from a different bucket untouched" do
+      other_url = "https://some-other-bucket.s3.us-east-1.amazonaws.com/uploads/x.jpg?X-Amz-Signature=abc"
+      expect(presigner.canonicalize(other_url)).to eq(other_url)
+    end
+
+    it "returns the URL unchanged when S3 is not configured" do
+      stub_const("ENV", ENV.to_h.except("S3_BUCKET"))
+      expect(presigner.canonicalize(presigned_url_for_same_object)).to eq(presigned_url_for_same_object)
+    end
+  end
+
+  describe ".canonicalize" do
+    it "delegates to a new instance's #canonicalize" do
+      url = "https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg?X-Amz-Signature=abc"
+      result = described_class.canonicalize(url)
+
+      expect(result).to eq("https://clinic-for-life.s3.us-east-1.amazonaws.com/uploads/x.jpg")
+    end
+  end
 end

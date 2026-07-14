@@ -35,7 +35,11 @@ module Api
         assessment = current_assessment
         image = assessment.biomechanical_images.find_or_initialize_by(slot: slot)
         old_image_url = image.image_url
-        image.image_url = params.require(:image_url)
+        # The client's `image_url` may be the presigned GET URL echoed back
+        # from a previous read (see BiomechanicalAssessmentSerializer) —
+        # canonicalize it so it doesn't get persisted with a query string,
+        # and so an unchanged image isn't mistaken for a new one below.
+        image.image_url = S3Presigner.canonicalize(params.require(:image_url))
         image.save!
         delete_from_s3(old_image_url) if old_image_url != image.image_url
         audit!("biomechanical_assessment.upload", record: assessment, metadata: { slot: slot })
