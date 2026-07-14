@@ -22,3 +22,10 @@ Things you may want to cover:
 * Deployment instructions
 
 * ...
+
+## Deploy
+
+Production isn't deployed on push to `main` — it's controlled by GitHub
+Releases, via a workflow that validates the commit's CI status and then
+triggers the Render Deploy Hook. See [`docs/deploy.md`](docs/deploy.md) for
+the full flow, how to cut a release, and how to roll back.
