@@ -108,6 +108,12 @@ render json: { error: "mensagem" }, status: :forbidden
 - **Ao adicionar/alterar endpoint consumido pelo frontend, atualize o provider state correspondente em `spec/pact/support/states/`** (registrado em `spec/pact/consumers/backend_provider_spec.rb`) no mesmo PR.
 - `bundle exec rake pact:verify` — nunca roda dentro de `bundle exec rspec` nem conta na cobertura do SimpleCov.
 
+## Deploy em produção
+
+- Ver `docs/deploy.md` para o fluxo completo, secrets necessários e rollback.
+- Produção **não** é publicada por push em `main` — só por GitHub Release (`gh release create ...`), que dispara `.github/workflows/release.yml`.
+- Esse workflow confere se o commit da release tem todo o CI verde antes de acionar o Deploy Hook do Render — não há branch protection nativa na `main` (repositório privado no plano free), então esse é o gate real.
+
 ## Controle de versão
 
 - **Nunca faça `git commit` ou `git push` sem autorização expressa do usuário.** Sempre deixe as alterações no working tree para revisão antes de perguntar se deve commitar.
