@@ -16,7 +16,7 @@ class BioimpedanceMeasurementSerializer
       bmi: @measurement.bmi&.to_f,
       source: @measurement.source,
       photo_id: photo&.id&.to_s,
-      photo_url: photo&.image_url
+      photo_url: S3Presigner.presign_get_for(photo&.image_url)
     }
   end
 end
