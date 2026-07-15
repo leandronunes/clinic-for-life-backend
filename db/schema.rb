@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_135718) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -38,6 +38,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_135718) do
     t.float "variable_glycemia"
     t.float "weight"
     t.index ["student_id"], name: "index_anamneses_on_student_id", unique: true
+  end
+
+  create_table "attendance_cycles", force: :cascade do |t|
+    t.integer "contracted_workouts_per_cycle", null: false
+    t.datetime "created_at", null: false
+    t.datetime "ended_at", null: false
+    t.datetime "started_at", null: false
+    t.bigint "student_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["student_id"], name: "index_attendance_cycles_on_student_id"
   end
 
   create_table "audit_logs", force: :cascade do |t|
@@ -224,7 +234,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_135718) do
 
   create_table "students", force: :cascade do |t|
     t.date "birth_date"
+    t.integer "contracted_workouts_per_cycle"
     t.datetime "created_at", null: false
+    t.datetime "cycle_started_at"
     t.string "email", null: false
     t.string "emergency_contact"
     t.string "health_plan"
@@ -306,6 +318,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_135718) do
   end
 
   add_foreign_key "anamneses", "students"
+  add_foreign_key "attendance_cycles", "students"
   add_foreign_key "audit_logs", "users"
   add_foreign_key "bioimpedance_imports", "trainers"
   add_foreign_key "bioimpedance_measurements", "students"

@@ -12,12 +12,15 @@ class Student < ApplicationRecord
   has_many :workouts, dependent: :destroy
   has_many :exams, dependent: :destroy
   has_many :workout_check_ins, dependent: :destroy
+  has_many :attendance_cycles, dependent: :destroy
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :sex, presence: true, inclusion: { in: SEXES }
   validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :contracted_workouts_per_cycle,
+            numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   before_validation { self.email = email.to_s.downcase.strip }
 
   def trainer_name

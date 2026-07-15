@@ -21,6 +21,19 @@ RSpec.describe Student, type: :model do
     it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
     it { is_expected.to validate_inclusion_of(:sex).in_array(Student::SEXES) }
     it { is_expected.to validate_inclusion_of(:status).in_array(Student::STATUSES) }
+
+    it "allows a nil contracted_workouts_per_cycle" do
+      expect(build(:student, contracted_workouts_per_cycle: nil)).to be_valid
+    end
+
+    it "rejects a zero or negative contracted_workouts_per_cycle" do
+      expect(build(:student, contracted_workouts_per_cycle: 0)).not_to be_valid
+      expect(build(:student, contracted_workouts_per_cycle: -1)).not_to be_valid
+    end
+
+    it "rejects a non-integer contracted_workouts_per_cycle" do
+      expect(build(:student, contracted_workouts_per_cycle: 1.5)).not_to be_valid
+    end
   end
 
   describe "email normalization" do

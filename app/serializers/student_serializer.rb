@@ -17,6 +17,8 @@ class StudentSerializer
       partner_card_enabled: @student.partner_card_enabled,
       health_plan: @student.health_plan,
       emergency_contact: @student.emergency_contact,
+      contracted_workouts_per_cycle: @student.contracted_workouts_per_cycle,
+      cycle_started_at: @student.cycle_started_at&.iso8601,
       created_at: @student.created_at&.iso8601
     }
   end

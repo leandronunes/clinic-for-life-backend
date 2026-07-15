@@ -23,4 +23,14 @@ module Authorizable
 
     render json: { error: "Forbidden" }, status: :forbidden
   end
+
+  # Like authorize_student!, but for staff-only actions (e.g. renewing an
+  # attendance cycle) where the student themselves must be excluded even
+  # though they're allowed to read/update their own profile elsewhere.
+  def authorize_staff_for_student!(student)
+    return if current_user&.admin?
+    return if current_user&.personal? && student.trainer_id == current_user.trainer_id
+
+    render json: { error: "Forbidden" }, status: :forbidden
+  end
 end
