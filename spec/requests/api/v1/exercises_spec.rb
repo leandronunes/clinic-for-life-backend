@@ -190,6 +190,41 @@ RSpec.describe "Api::V1::Exercises", type: :request do
               headers: auth_headers(personal)
       end
     end
+
+    context "when the student edits their own exercise" do
+      let(:student_user) { create(:user, :student_account, student: student) }
+
+      it "lets the student update the load they used" do
+        exercise = create(:exercise, workout: workout, load_kg: 20)
+        patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
+              params: { load_kg: 22.5 }, headers: auth_headers(student_user)
+
+        expect(response).to have_http_status(:ok)
+        expect(exercise.reload.load_kg).to eq(22.5)
+      end
+
+      it "ignores every other field sent by the student" do
+        exercise = create(:exercise, workout: workout, name: "Supino reto", sets: 4, load_kg: 20)
+        patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
+              params: { load_kg: 25, name: "Hijacked", sets: 99 },
+              headers: auth_headers(student_user)
+
+        exercise.reload
+        expect(exercise.load_kg).to eq(25)
+        expect(exercise.name).to eq("Supino reto")
+        expect(exercise.sets).to eq(4)
+      end
+
+      it "forbids a student from updating another student's exercise" do
+        other_exercise = create(:exercise)
+        other_workout = other_exercise.workout
+        patch "/api/v1/students/#{other_workout.student_id}/workouts/#{other_workout.id}" \
+              "/exercises/#{other_exercise.id}",
+              params: { load_kg: 30 }, headers: auth_headers(student_user)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
   end
 
   describe "PATCH .../exercises/reorder" do
@@ -252,6 +287,16 @@ RSpec.describe "Api::V1::Exercises", type: :request do
                headers: auth_headers(personal)
       end.to change(Exercise, :count).by(-1)
       expect(response).to have_http_status(:no_content)
+    end
+
+    it "forbids a student from deleting an exercise" do
+      exercise = create(:exercise, workout: workout)
+      student_user = create(:user, :student_account, student: student)
+      expect do
+        delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/exercises/#{exercise.id}",
+               headers: auth_headers(student_user)
+      end.not_to change(Exercise, :count)
+      expect(response).to have_http_status(:forbidden)
     end
   end
 end

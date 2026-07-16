@@ -1628,7 +1628,12 @@ paths:
       tags: [Exercises]
       summary: Atualiza um exercício
       operationId: updateExercise
-      description: Requer papel `admin` ou `personal`.
+      description: >-
+        Admin e personal (dono do aluno) podem alterar qualquer campo. O
+        próprio aluno também pode enviar esta requisição, mas apenas
+        `load_kg` é aplicado — os demais campos do payload são ignorados
+        silenciosamente (usado na tela de execução para registrar a carga
+        realmente usada).
       requestBody:
         required: true
         content:
@@ -1655,7 +1660,9 @@ paths:
       tags: [Exercises]
       summary: Atualiza um exercício (idêntico ao PATCH)
       operationId: replaceExercise
-      description: Requer papel `admin` ou `personal`.
+      description: >-
+        Idêntico ao PATCH — inclusive quanto ao aluno só poder alterar
+        `load_kg`.
       requestBody:
         required: true
         content:

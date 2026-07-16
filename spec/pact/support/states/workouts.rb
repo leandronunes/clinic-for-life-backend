@@ -10,6 +10,8 @@ module PactStates
     REORDER_EXERCISE_B = 903
     DELETE_EXERCISE_WORKOUT_ID = 805
     DELETE_EXERCISE_ID = 904
+    STUDENT_LOAD_WORKOUT_ID = 806
+    STUDENT_LOAD_EXERCISE_ID = 905
 
     def self.definitions
       proc do
@@ -118,6 +120,19 @@ module PactStates
             workout = FactoryBot.create(:workout, id: DELETE_EXERCISE_WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, id: DELETE_EXERCISE_ID, workout: workout)
             PactStateContext.as(FactoryBot.create(:user, :admin))
+          end
+        end
+
+        provider_state "workout #{STUDENT_LOAD_WORKOUT_ID} for student #{STUDENT_ID} has exercise " \
+                       "#{STUDENT_LOAD_EXERCISE_ID}, and that student is authenticated" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: STUDENT_LOAD_WORKOUT_ID, student: student)
+            FactoryBot.create(:exercise, id: STUDENT_LOAD_EXERCISE_ID, workout: workout, load_kg: 20)
+            student_user = FactoryBot.create(:user, :student_account, student: student)
+            PactStateContext.as(student_user)
           end
         end
 
