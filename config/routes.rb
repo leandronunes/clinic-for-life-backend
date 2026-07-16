@@ -39,6 +39,11 @@ Rails.application.routes.draw do
 
       # Students
       resources :students, only: %i[index show create update destroy] do
+        member { post :renew_cycle }
+
+        # Attendance cycle history — closed cycles, archived on renew_cycle
+        resources :attendance_cycles, only: %i[index]
+
         # Anamnesis
         resource :anamnesis, only: %i[show update], controller: "anamneses"
 

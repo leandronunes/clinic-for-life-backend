@@ -1,7 +1,7 @@
 module Api
   module V1
     class StudentsController < BaseController
-      before_action :set_student, only: %i[show update destroy]
+      before_action :set_student, only: %i[show update destroy renew_cycle]
       # update's own authorize_student! already covers write access (admin,
       # the student's personal, or the student themselves) — require_write_access!
       # here would additionally block students from updating their own profile.
@@ -31,7 +31,7 @@ module Api
 
       # POST /api/v1/students
       def create
-        student = Student.new(student_params.merge(admin_only_params))
+        student = Student.new(student_params.merge(admin_only_params).merge(staff_only_params))
         student.trainer_id ||= current_user.trainer_id if current_user.personal?
         student.save!
         audit!("student.create", record: student)
@@ -43,7 +43,7 @@ module Api
         authorize_student!(@student)
         return if performed?
 
-        @student.update!(student_params.merge(admin_only_params))
+        @student.update!(student_params.merge(admin_only_params).merge(staff_only_params))
         audit!("student.update", record: @student)
         render_data(StudentSerializer.new(@student).as_json)
       end
@@ -53,6 +53,37 @@ module Api
         audit!("student.destroy", record: @student)
         @student.destroy!
         head :no_content
+      end
+
+      # POST /api/v1/students/:id/renew_cycle
+      #
+      # The "Renovar ciclo" action on the Assiduidade dos alunos screen:
+      # closes the student's current attendance cycle into an AttendanceCycle
+      # history record (recoverable via GET /students/:id/attendance_cycles)
+      # and starts a new one from now. Unlike a bare PATCH cycle_started_at
+      # (still available to staff via #staff_only_params — used by the "quota
+      # change resets the cycle" flow on the aluno edit form, where there's
+      # no distinct prior cycle worth archiving), this endpoint guarantees
+      # the closing cycle's boundaries are never silently lost.
+      def renew_cycle
+        authorize_staff_for_student!(@student)
+        return if performed?
+
+        if @student.contracted_workouts_per_cycle.blank?
+          return render json: { error: "Aluno não possui treinos contratados por ciclo definidos" },
+                        status: :unprocessable_content
+        end
+
+        now = Time.current
+        AttendanceCycle.create!(
+          student: @student,
+          contracted_workouts_per_cycle: @student.contracted_workouts_per_cycle,
+          started_at: @student.cycle_started_at || @student.created_at,
+          ended_at: now
+        )
+        @student.update!(cycle_started_at: now)
+        audit!("student.renew_cycle", record: @student)
+        render_data(StudentSerializer.new(@student).as_json)
       end
 
       private
@@ -83,6 +114,18 @@ module Api
         return {} unless current_user.admin? && params.key?(:partner_card_enabled)
 
         { partner_card_enabled: params[:partner_card_enabled] }
+      end
+
+      # contracted_workouts_per_cycle and cycle_started_at drive the
+      # "Assiduidade dos alunos" quota/cycle — a student must not be able to
+      # inflate their own quota or reset their own cycle via the
+      # self-service profile update that authorize_student! otherwise
+      # allows. For archiving the closing cycle before resetting it, use
+      # #renew_cycle instead of a bare PATCH.
+      def staff_only_params
+        return {} unless current_user.admin? || current_user.personal?
+
+        params.permit(:contracted_workouts_per_cycle, :cycle_started_at)
       end
     end
   end

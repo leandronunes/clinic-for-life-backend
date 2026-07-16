@@ -741,6 +741,69 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/students/{student_id}/renew_cycle:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    post:
+      tags: [Students]
+      summary: Renova o ciclo de assiduidade do aluno
+      operationId: renewStudentCycle
+      description: >-
+        Requer papel `admin` ou `personal` (dono do aluno) — o próprio aluno
+        não pode renovar seu ciclo. Arquiva o ciclo atual como um
+        AttendanceCycle (recuperável via GET
+        /students/{student_id}/attendance_cycles) e reinicia cycle_started_at
+        a partir de agora.
+      responses:
+        "200":
+          description: Ciclo renovado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Student" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Aluno não possui treinos contratados por ciclo definidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/attendance_cycles:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Students]
+      summary: Lista os ciclos de assiduidade já encerrados do aluno
+      operationId: listAttendanceCycles
+      description: >-
+        Acessível por `admin`, pelo `personal` dono do aluno, ou pelo
+        próprio aluno. Ordenado do ciclo encerrado mais recente para o
+        mais antigo.
+      responses:
+        "200":
+          description: Histórico de ciclos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AttendanceCycle" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/students/{student_id}/anamnesis:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
@@ -2317,6 +2380,22 @@ components:
             true na criação; somente um admin pode alterar.
         health_plan: { type: string, nullable: true }
         emergency_contact: { type: string, nullable: true }
+        contracted_workouts_per_cycle:
+          type: integer
+          nullable: true
+          description: >-
+            Treinos contratados por ciclo. Null quando o aluno não tem
+            contrato de quota definido. Somente admin e personal podem alterar.
+        cycle_started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Início do ciclo de assiduidade atual, usado para contar os
+            treinos concluídos dentro do ciclo. Somente admin e personal
+            podem alterar — via PATCH direto (ex.: ao mudar a quota) ou via
+            POST /students/{id}/renew_cycle, que além de reiniciar o ciclo
+            arquiva o anterior em AttendanceCycle.
         created_at: { type: string, format: date-time }
 
     StudentInput:
@@ -2340,6 +2419,44 @@ components:
           description: "Somente um admin pode definir este campo; ignorado para os demais papéis."
         health_plan: { type: string, nullable: true }
         emergency_contact: { type: string, nullable: true }
+        contracted_workouts_per_cycle:
+          type: integer
+          nullable: true
+          description: >-
+            Treinos contratados por ciclo. Somente admin e personal podem
+            definir este campo; ignorado para os demais papéis.
+        cycle_started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Início do ciclo de assiduidade atual. Somente admin e personal
+            podem definir este campo; ignorado para os demais papéis. Prefira
+            POST /students/{id}/renew_cycle para reiniciar o ciclo mantendo
+            o anterior arquivado em AttendanceCycle.
+
+    AttendanceCycle:
+      type: object
+      description: >-
+        Um ciclo de assiduidade já encerrado (arquivado ao chamar
+        POST /students/{id}/renew_cycle).
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        contracted_workouts_per_cycle:
+          type: integer
+          description: Quota vigente durante este ciclo (snapshot no momento do arquivamento).
+        completed_workouts:
+          type: integer
+          description: Treinos concluídos com completed_at dentro de [started_at, ended_at].
+        percentage:
+          type: integer
+          description: completed_workouts / contracted_workouts_per_cycle, arredondado.
+        status:
+          type: string
+          enum: [completed, exceeded]
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time }
 
     ExternalProfessional:
       type: object

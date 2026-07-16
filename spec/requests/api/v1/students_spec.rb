@@ -95,6 +95,12 @@ RSpec.describe "Api::V1::Students", type: :request do
                                 headers: auth_headers(personal)
       expect(Student.last.partner_card_enabled).to be(true)
     end
+
+    it "lets a personal set the contracted workouts per cycle" do
+      post "/api/v1/students", params: valid_params.merge(contracted_workouts_per_cycle: 8),
+                                headers: auth_headers(personal)
+      expect(Student.last.contracted_workouts_per_cycle).to eq(8)
+    end
   end
 
   describe "PATCH /api/v1/students/:id" do
@@ -167,6 +173,106 @@ RSpec.describe "Api::V1::Students", type: :request do
                                                headers: auth_headers(student_user)
       expect(response).to have_http_status(:ok)
       expect(student.reload.partner_card_enabled).to be(true)
+    end
+
+    it "lets a personal set the contracted workouts per cycle for their own student" do
+      student = create(:student, trainer: trainer)
+      patch "/api/v1/students/#{student.id}", params: { contracted_workouts_per_cycle: 12 },
+                                               headers: auth_headers(personal)
+      expect(student.reload.contracted_workouts_per_cycle).to eq(12)
+    end
+
+    it "ignores contracted_workouts_per_cycle sent by the student themselves" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8)
+      student_user = create(:user, :student_account, student: student)
+      patch "/api/v1/students/#{student.id}", params: { contracted_workouts_per_cycle: 999 },
+                                               headers: auth_headers(student_user)
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.contracted_workouts_per_cycle).to eq(8)
+    end
+
+    it "lets an admin reset a student's cycle_started_at directly (e.g. when the quota changes)" do
+      student = create(:student, trainer: trainer, cycle_started_at: 2.months.ago)
+      new_start = Time.current.iso8601
+      patch "/api/v1/students/#{student.id}", params: { cycle_started_at: new_start },
+                                               headers: auth_headers(admin)
+      expect(student.reload.cycle_started_at.iso8601).to eq(new_start)
+    end
+
+    it "ignores cycle_started_at sent by the student themselves" do
+      original_start = 1.month.ago
+      student = create(:student, trainer: trainer, cycle_started_at: original_start)
+      student_user = create(:user, :student_account, student: student)
+      patch "/api/v1/students/#{student.id}", params: { cycle_started_at: Time.current.iso8601 },
+                                               headers: auth_headers(student_user)
+      expect(response).to have_http_status(:ok)
+      expect(student.reload.cycle_started_at).to be_within(1.second).of(original_start)
+    end
+
+    it "rejects a zero contracted_workouts_per_cycle" do
+      student = create(:student, trainer: trainer)
+      patch "/api/v1/students/#{student.id}", params: { contracted_workouts_per_cycle: 0 },
+                                               headers: auth_headers(admin)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
+  describe "POST /api/v1/students/:id/renew_cycle" do
+    it "archives the current cycle and starts a new one" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8,
+                                  cycle_started_at: 2.months.ago)
+
+      expect do
+        post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(admin)
+      end.to change(AttendanceCycle, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      archived = AttendanceCycle.last
+      expect(archived.student).to eq(student)
+      expect(archived.contracted_workouts_per_cycle).to eq(8)
+      expect(archived.started_at).to be_within(1.second).of(2.months.ago)
+      expect(student.reload.cycle_started_at).to be_within(1.second).of(Time.current)
+    end
+
+    it "falls back to the student's created_at as the archived cycle's start when never set" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8, cycle_started_at: nil)
+
+      post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(admin)
+
+      expect(AttendanceCycle.last.started_at).to be_within(1.second).of(student.created_at)
+    end
+
+    it "lets a personal renew their own student's cycle" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8)
+      post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(personal)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "forbids a personal from renewing another trainer's student" do
+      other = create(:student, contracted_workouts_per_cycle: 8)
+      post "/api/v1/students/#{other.id}/renew_cycle", headers: auth_headers(personal)
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "forbids the student themselves from renewing their own cycle" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8)
+      student_user = create(:user, :student_account, student: student)
+      post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(student_user)
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "rejects renewal when the student has no contracted quota" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: nil)
+      post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(admin)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "records an audit log on renewal" do
+      student = create(:student, trainer: trainer, contracted_workouts_per_cycle: 8)
+      expect do
+        post "/api/v1/students/#{student.id}/renew_cycle", headers: auth_headers(admin)
+      end.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("student.renew_cycle")
     end
   end
 
