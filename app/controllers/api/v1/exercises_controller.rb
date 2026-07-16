@@ -4,7 +4,12 @@ module Api
       include StudentScoped
       include S3Deletable
 
-      before_action :require_write_access!
+      # update is deliberately excluded: a student may PATCH their own
+      # exercise, but only to record the load they actually used (see
+      # #update and #student_exercise_params) — StudentScoped's
+      # authorize_student! (admin, owning personal, or the student
+      # themselves) is the only gate for that action.
+      before_action :require_write_access!, only: %i[create destroy reorder]
       before_action :set_workout
 
       # POST /api/v1/students/:student_id/workouts/:workout_id/exercises
@@ -20,7 +25,7 @@ module Api
       def update
         exercise = @workout.exercises.find(params[:id])
         old_video_url = exercise.video_url
-        exercise.update!(exercise_params)
+        exercise.update!(current_user.student? ? student_exercise_params : exercise_params)
         audit!("exercise.update", record: exercise)
         delete_from_s3(old_video_url) if old_video_url != exercise.video_url
         render_data(ExerciseSerializer.new(exercise).as_json)
@@ -50,6 +55,13 @@ module Api
 
       def set_workout
         @workout = @student.workouts.find(params[:workout_id])
+      end
+
+      # A student editing their own exercise from the execution screen may
+      # only touch the load they used — the workout's structure (sets,
+      # reps, rest, video, etc.) stays personal/admin-only.
+      def student_exercise_params
+        params.permit(:load_kg)
       end
 
       def exercise_params
