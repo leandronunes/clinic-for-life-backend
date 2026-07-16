@@ -11,6 +11,8 @@ module PactStates
     VIEW_CHECK_IN_ID = 2352
     DELETE_WORKOUT_ID = 2343
     DELETE_CHECK_IN_ID = 2353
+    TODAY_WORKOUT_ID = 2344
+    TODAY_CHECK_IN_ID = 2354
 
     def self.definitions
       proc do
@@ -83,6 +85,19 @@ module PactStates
                                                   status: "completed", completed_at: Time.current)
             student_user = FactoryBot.create(:user, :student_account, student: student)
             PactStateContext.as(student_user)
+          end
+        end
+
+        provider_state "student #{STUDENT_ID} already completed workout #{TODAY_WORKOUT_ID} " \
+                       "today (check-in #{TODAY_CHECK_IN_ID})" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: TODAY_WORKOUT_ID, student: student, title: "Treino A")
+            FactoryBot.create(:workout_check_in, id: TODAY_CHECK_IN_ID, workout: workout, student: student,
+                                                  status: "completed", completed_at: Time.current)
+            PactStateContext.as(FactoryBot.create(:user, :admin))
           end
         end
       end
