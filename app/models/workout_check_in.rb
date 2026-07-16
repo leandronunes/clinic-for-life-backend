@@ -1,5 +1,11 @@
 class WorkoutCheckIn < ApplicationRecord
   STATUSES = %w[in_progress completed].freeze
+  # Who performed the check-in — drives attendance-cycle counting (see
+  # AttendanceCycle#completed_workouts): only "personal" (staff-witnessed)
+  # check-ins count against the trainer's contracted quota. "aluno" means
+  # self check-in, which stays out of that count until/unless staff claims
+  # it (WorkoutCheckInsController#claim).
+  PERFORMED_BY_VALUES = %w[aluno personal].freeze
 
   belongs_to :workout
   belongs_to :student
@@ -7,9 +13,11 @@ class WorkoutCheckIn < ApplicationRecord
   has_many :check_in_feedbacks, dependent: :destroy
 
   validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :performed_by, presence: true, inclusion: { in: PERFORMED_BY_VALUES }
 
   scope :in_progress, -> { where(status: "in_progress") }
   scope :completed, -> { where(status: "completed") }
+  scope :performed_by_personal, -> { where(performed_by: "personal") }
 
   def exercises_total
     workout.exercises.count

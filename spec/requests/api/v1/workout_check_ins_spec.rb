@@ -73,6 +73,20 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
       expect(response).to have_http_status(:created)
     end
 
+    it "marks a student-created check-in as performed by the aluno" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins",
+           headers: auth_headers(student_user)
+
+      expect(json_body["data"]["performed_by"]).to eq("aluno")
+    end
+
+    it "marks a personal-created check-in as performed by the personal" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins",
+           headers: auth_headers(personal)
+
+      expect(json_body["data"]["performed_by"]).to eq("personal")
+    end
+
     it "forbids a personal outside the student's portfolio" do
       other_personal = create(:user, :personal)
       post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins",
@@ -344,6 +358,106 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
                headers: auth_headers(student_user)
       end.to change(AuditLog, :count).by(1)
       expect(AuditLog.last.action).to eq("workout_check_in.destroy")
+    end
+
+    it "forbids the student from removing a check-in claimed by the personal" do
+      check_in = create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(WorkoutCheckIn.exists?(check_in.id)).to be true
+    end
+
+    it "still lets the owning personal remove a check-in performed by the personal" do
+      check_in = create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "still lets an admin remove a check-in performed by the personal" do
+      admin = create(:user, :admin)
+      check_in = create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student)
+
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+    end
+  end
+
+  describe "POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/claim" do
+    it "lets the owning personal claim a check-in the student performed themselves" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["performed_by"]).to eq("personal")
+      expect(check_in.reload.performed_by).to eq("personal")
+    end
+
+    it "lets an admin claim a check-in" do
+      admin = create(:user, :admin)
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+           headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(check_in.reload.performed_by).to eq("personal")
+    end
+
+    it "is idempotent when the check-in was already claimed" do
+      check_in = create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:ok)
+      expect(check_in.reload.performed_by).to eq("personal")
+    end
+
+    it "forbids the student from claiming their own check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+           headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(check_in.reload.performed_by).to eq("aluno")
+    end
+
+    it "forbids a personal outside the student's portfolio" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      other_personal = create(:user, :personal)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+           headers: auth_headers(other_personal)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "returns 404 for a check-in that does not exist" do
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/999999/claim",
+           headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "records an audit log on claim" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      expect do
+        post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/claim",
+             headers: auth_headers(personal)
+      end.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("workout_check_in.claim")
     end
   end
 end

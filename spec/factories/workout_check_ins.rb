@@ -8,5 +8,9 @@ FactoryBot.define do
       status { "completed" }
       completed_at { Time.current }
     end
+
+    trait :performed_by_personal do
+      performed_by { "personal" }
+    end
   end
 end
