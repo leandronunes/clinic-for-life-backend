@@ -81,7 +81,7 @@ Rails.application.routes.draw do
           end
 
           # Check-ins — "Iniciar treino" / "Finalizar treino" / marcar exercícios
-          resources :check_ins, only: %i[create], controller: "workout_check_ins" do
+          resources :check_ins, only: %i[create destroy], controller: "workout_check_ins" do
             member do
               post :finish
               post :view

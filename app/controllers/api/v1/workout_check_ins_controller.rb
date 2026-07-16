@@ -50,6 +50,19 @@ module Api
         render_data(WorkoutCheckInSerializer.new(check_in).as_json)
       end
 
+      # DELETE /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id
+      #
+      # Lets the student remove a mistaken check-in from their own history
+      # (e.g. started a workout by accident, or wants a bad session gone) —
+      # same authorization as every other action here (StudentScoped already
+      # covers admin, the owning personal, and the student themselves).
+      def destroy
+        check_in = @workout.workout_check_ins.find(params[:id])
+        audit!("workout_check_in.destroy", record: check_in)
+        check_in.destroy!
+        head :no_content
+      end
+
       # PATCH /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/exercises/:exercise_id
       def toggle_exercise
         check_in = @workout.workout_check_ins.find(params[:id])

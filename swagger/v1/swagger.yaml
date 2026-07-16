@@ -1725,6 +1725,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    delete:
+      tags: [CheckIns]
+      summary: Remove um check-in (concluído ou em andamento)
+      operationId: deleteCheckIn
+      description: >-
+        O próprio aluno pode remover seu check-in (ex.: iniciado por engano),
+        além de admin e do personal dono do aluno. Cascata: apaga também os
+        exercícios marcados e o feedback associados a este check-in.
+      responses:
+        "204":
+          description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/current:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
