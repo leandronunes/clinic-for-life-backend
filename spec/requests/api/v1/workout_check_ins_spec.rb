@@ -25,12 +25,33 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
       expect(json_body["data"]["id"]).to eq(check_in.id.to_s)
     end
 
-    it "does not return a completed check-in as current" do
-      create(:workout_check_in, :completed, workout: workout, student: student)
+    it "does not return a completed check-in from a previous day as current" do
+      create(:workout_check_in, :completed, workout: workout, student: student,
+                                             completed_at: 2.days.ago)
       get "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/current",
           headers: auth_headers(student_user)
 
       expect(json_body["data"]).to be_nil
+    end
+
+    it "returns today's completed check-in as current when there is no in-progress one" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student,
+                                                         completed_at: Time.current)
+      get "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/current",
+          headers: auth_headers(student_user)
+
+      expect(json_body["data"]["id"]).to eq(check_in.id.to_s)
+      expect(json_body["data"]["status"]).to eq("completed")
+    end
+
+    it "prefers an in-progress check-in over a completed one from earlier today" do
+      create(:workout_check_in, :completed, workout: workout, student: student,
+                                             completed_at: Time.current)
+      in_progress = create(:workout_check_in, workout: workout, student: student)
+      get "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/current",
+          headers: auth_headers(student_user)
+
+      expect(json_body["data"]["id"]).to eq(in_progress.id.to_s)
     end
   end
 
@@ -75,6 +96,28 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(json_body["error"]).to match(/já existe/i)
+    end
+
+    it "returns 422 when the workout was already completed today" do
+      create(:workout_check_in, :completed, workout: workout, student: student,
+                                             completed_at: Time.current)
+
+      expect do
+        post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins",
+             headers: auth_headers(student_user)
+      end.not_to change(WorkoutCheckIn, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_body["error"]).to match(/já foi concluído hoje/i)
+    end
+
+    it "allows a new check-in when the workout was completed on a previous day" do
+      create(:workout_check_in, :completed, workout: workout, student: student,
+                                             completed_at: 1.day.ago)
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins",
+           headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:created)
     end
   end
 

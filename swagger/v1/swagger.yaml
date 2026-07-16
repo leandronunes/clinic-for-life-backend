@@ -1704,6 +1704,9 @@ paths:
       description: >-
         Idempotente por natureza dos dados: só existe um check-in em
         andamento por treino por vez (garantido por índice único no banco).
+        Também não permite iniciar um novo check-in se este treino já foi
+        concluído hoje — remova o check-in existente primeiro (DELETE
+        .../check_ins/{id}) para refazê-lo no mesmo dia.
       responses:
         "201":
           description: Check-in iniciado
@@ -1720,7 +1723,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
-          description: Treino arquivado, ou já existe um check-in em andamento
+          description: >-
+            Treino arquivado, já existe um check-in em andamento, ou este
+            treino já foi concluído hoje
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1754,11 +1759,15 @@ paths:
       - $ref: "#/components/parameters/WorkoutIdParam"
     get:
       tags: [CheckIns]
-      summary: Check-in em andamento deste treino, se houver
+      summary: Check-in "atual" deste treino — em andamento, ou concluído hoje
       operationId: getCurrentCheckIn
+      description: >-
+        Retorna o check-in em andamento, se houver; senão, o check-in
+        concluído hoje (se houver); senão, `data: null`. Um check-in
+        concluído em um dia anterior nunca é retornado aqui.
       responses:
         "200":
-          description: "Check-in em andamento, ou `data: null` se não houver nenhum"
+          description: "Check-in em andamento ou concluído hoje, ou `data: null` se não houver nenhum"
           content:
             application/json:
               schema:

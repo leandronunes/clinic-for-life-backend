@@ -16,8 +16,13 @@ module Api
       end
 
       # GET /api/v1/students/:student_id/workouts/:workout_id/check_ins/current
+      #
+      # "Current" means "what the aluno sees instead of a bare 'Iniciar
+      # treino' button": the in-progress check-in if there is one, otherwise
+      # today's completed one (if any) — so the frontend can show "já
+      # concluído hoje" instead of silently letting a second one start.
       def current
-        check_in = @workout.workout_check_ins.in_progress.first
+        check_in = @workout.workout_check_ins.in_progress.first || today_completed_check_in
         render_data(check_in ? WorkoutCheckInSerializer.new(check_in).as_json : nil)
       end
 
@@ -25,6 +30,11 @@ module Api
       def create
         if @workout.archived?
           return render json: { error: "Treino arquivado é somente leitura" }, status: :unprocessable_content
+        end
+        if today_completed_check_in
+          return render json: {
+            error: "Este treino já foi concluído hoje. Remova o check-in para refazê-lo."
+          }, status: :unprocessable_content
         end
 
         check_in = @workout.workout_check_ins.create!(student: @student)
@@ -89,6 +99,14 @@ module Api
 
       def set_workout
         @workout = @student.workouts.find(params[:workout_id])
+      end
+
+      # A workout only makes sense to check into once a day — this backs
+      # both #current (so the UI shows "já concluído hoje" instead of a
+      # stale "Iniciar treino") and #create (so that state is actually
+      # enforced, not just hidden client-side).
+      def today_completed_check_in
+        @workout.workout_check_ins.completed.where(completed_at: Time.zone.now.all_day).first
       end
 
       def already_finished
