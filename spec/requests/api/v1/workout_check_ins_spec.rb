@@ -217,4 +217,90 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  describe "DELETE /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id" do
+    it "lets the student remove their own completed check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      expect do
+        delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+               headers: auth_headers(student_user)
+      end.to change(WorkoutCheckIn, :count).by(-1)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "lets the student remove their own in-progress check-in" do
+      check_in = create(:workout_check_in, workout: workout, student: student)
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:no_content)
+      expect(WorkoutCheckIn.exists?(check_in.id)).to be false
+    end
+
+    it "cascades to exercise check-ins and feedback" do
+      exercise = create(:exercise, workout: workout)
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      create(:exercise_check_in, workout_check_in: check_in, exercise: exercise)
+      create(:check_in_feedback, workout_check_in: check_in)
+
+      expect do
+        delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+               headers: auth_headers(student_user)
+      end.to change(ExerciseCheckIn, :count).by(-1).and change(CheckInFeedback, :count).by(-1)
+    end
+
+    it "lets the owning personal remove a student's check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(personal)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "lets an admin remove a check-in" do
+      admin = create(:user, :admin)
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "forbids a personal outside the student's portfolio" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      other_personal = create(:user, :personal)
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(other_personal)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(WorkoutCheckIn.exists?(check_in.id)).to be true
+    end
+
+    it "forbids another student from removing someone else's check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      other_student_user = create(:user, :student_account)
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+             headers: auth_headers(other_student_user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "returns 404 for a check-in that does not exist" do
+      delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/999999",
+             headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "records an audit log on deletion" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      expect do
+        delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
+               headers: auth_headers(student_user)
+      end.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("workout_check_in.destroy")
+    end
+  end
 end
