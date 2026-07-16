@@ -23,6 +23,23 @@ Frontend                              S3 (bucket "clinic-for-life")
   GET (via presign_get_for)  ◄──────────────┘
 ```
 
+A mesma Lambda também é disparada para uploads feitos a partir do ambiente
+de desenvolvimento local, contra o mesmo bucket — só que sob o prefixo
+`dev/` (ver `S3Presigner#env_prefix`). O evento S3 tem um segundo gatilho
+dedicado ao prefixo `dev/uploads/raw/`, e o rewrite de chave da própria
+Lambda só troca o segmento `uploads/raw/` por `uploads/`, preservando
+qualquer prefixo antes dele:
+
+```
+dev/uploads/raw/students/7/exercise_video/<uuid>.mp4
+    → dev/uploads/students/7/exercise_video/<uuid>.mp4
+```
+
+Ou seja, vídeo de dev processado fica em `dev/uploads/...`, vídeo de
+produção fica em `uploads/...` — os dois namespaces nunca se cruzam, e o
+mesmo código/IAM/lifecycle cobrem ambos (ver `infra/terraform/
+s3_notification.tf`, `iam.tf`, `s3_lifecycle.tf`).
+
 `S3Presigner#presign` (`app/lib/s3_presigner.rb`) já retorna, desde o
 primeiro request, a `public_url` apontando para a chave **final** — a
 mesma que sempre foi persistida como `exercise.video_url`. Só o PUT do
@@ -123,7 +140,7 @@ a atualização da função.
 
 | Sintoma | Onde olhar |
 |---|---|
-| Vídeo nunca aparece, mesmo depois de minutos | A Lambda foi sequer invocada? Confirme que a chave do upload bate com o prefixo `uploads/raw/` do evento — chaves `dev/uploads/raw/...` (ambiente local) **não são cobertas**, por design (ver "Limitações" abaixo). |
+| Vídeo nunca aparece, mesmo depois de minutos | A Lambda foi sequer invocada? Confirme que a chave do upload bate com um dos dois prefixos do evento: `uploads/raw/` (produção) ou `dev/uploads/raw/` (dev local) — ver `infra/terraform/s3_notification.tf`. |
 | Log mostra `"msg":"FAILED"` com `ffmpeg exited N: ...` | Erro do próprio ffmpeg — o final da mensagem traz a cauda do stderr (últimas ~4000 chars). Formatos/codecs inesperados do vídeo de origem costumam aparecer aqui. |
 | Log mostra `"msg":"FAILED"` sem chegar a rodar o ffmpeg | Provável falha na camada (`ffmpeg_layer_arn` desatualizado/binário ausente) — confira `FFMPEG_PATH` e se a layer configurada ainda expõe `/opt/bin/ffmpeg`. |
 | Nada nos logs | Confira `aws_lambda_permission`/`aws_s3_bucket_notification` no `terraform apply` — sem a permissão, o S3 não consegue invocar a função. |
@@ -159,6 +176,11 @@ a atualização da função.
   parar de existir no futuro, a alternativa é migrar para uma imagem de
   container (Docker + ECR) com um build de ffmpeg mais recente — não
   implementado nesta v1.
-- **Desenvolvimento local não recebe compressão, por design**: o filtro do
-  evento S3 (`filter_prefix = "uploads/raw/"`) só cobre chaves de
-  produção — chaves `dev/uploads/raw/...` passam batido.
+- **Dev e produção compartilham a mesma Lambda e o mesmo bucket**: um
+  upload feito localmente contra o bucket real de produção (com
+  `S3_BUCKET`/credenciais configuradas em dev) também dispara a
+  compressão, sob o prefixo `dev/uploads/raw/`. Isso é intencional (para
+  testar a pipeline fim a fim sem precisar de infraestrutura própria por
+  ambiente — ver "Como testar ponta a ponta"), mas significa que testes
+  locais consomem a mesma cota de invocações/CPU da Lambda que a
+  produção. Não há isolamento de custo entre os dois ambientes.

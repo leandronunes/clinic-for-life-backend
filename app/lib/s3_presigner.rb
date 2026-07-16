@@ -127,9 +127,12 @@ class S3Presigner
   end
 
   # Only the "uploads/" segment moves — env_prefix ("dev/" or "") stays in
-  # front, so a dev-environment raw key becomes "dev/uploads/raw/..." —
-  # intentionally NOT covered by the S3 event trigger (production keys
-  # only, see infra/terraform/s3_notification.tf).
+  # front, so a dev-environment raw key becomes "dev/uploads/raw/...".
+  # Both the production and dev prefixes are covered by their own S3 event
+  # trigger (see infra/terraform/s3_notification.tf), so the Lambda's key
+  # rewrite (which only swaps "uploads/raw/" for "uploads/") lands the
+  # compressed dev video back under "dev/uploads/...", never crossing into
+  # the production namespace.
   def raw_key_for(final_key)
     final_key.sub("uploads/", "uploads/raw/")
   end

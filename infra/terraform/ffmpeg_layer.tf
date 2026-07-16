@@ -9,5 +9,13 @@ resource "aws_serverlessapplicationrepository_cloudformation_stack" "ffmpeg_laye
   name             = "ffmpeg-lambda-layer"
   application_id   = var.ffmpeg_sar_application_id
   semantic_version = var.ffmpeg_sar_semantic_version
-  capabilities     = []
+
+  # The SAR app provisions an IAM role for its build/attach custom
+  # resource, so AWS requires CAPABILITY_IAM regardless of what's
+  # configured here — confirmed via `aws cloudformation describe-stacks`
+  # on the already-deployed stack. Leaving this at `[]` (as originally
+  # written) causes every `plan` to show a phantom diff trying to strip
+  # the capability the stack actually needs, which CloudFormation would
+  # reject at apply time.
+  capabilities = ["CAPABILITY_IAM"]
 }
