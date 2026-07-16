@@ -7,9 +7,13 @@ class AttendanceCycle < ApplicationRecord
   validates :ended_at, presence: true
   validate :ended_at_after_started_at
 
-  # Treinos concluídos dentro dos limites deste ciclo já encerrado.
+  # Treinos concluídos dentro dos limites deste ciclo já encerrado. Só conta
+  # check-ins com performed_by "personal" — um check-in feito pelo próprio
+  # aluno não consome a quota contratada até o personal confirmá-lo (ver
+  # WorkoutCheckInsController#claim).
   def completed_workouts
-    student.workout_check_ins.completed.where(completed_at: started_at..ended_at).count
+    student.workout_check_ins.completed.performed_by_personal
+           .where(completed_at: started_at..ended_at).count
   end
 
   private

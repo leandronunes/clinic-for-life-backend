@@ -1749,7 +1749,11 @@ paths:
       description: >-
         O próprio aluno pode remover seu check-in (ex.: iniciado por engano),
         além de admin e do personal dono do aluno. Cascata: apaga também os
-        exercícios marcados e o feedback associados a este check-in.
+        exercícios marcados e o feedback associados a este check-in. Exceção:
+        uma vez que o check-in tenha sido feito ou confirmado pelo personal
+        (`performed_by: "personal"`, ver `/claim`), ele conta no ciclo de
+        atendimento do personal e o aluno não pode mais removê-lo — somente
+        admin ou o personal dono do aluno.
       responses:
         "204":
           description: Removido com sucesso
@@ -1822,6 +1826,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/claim:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [CheckIns]
+      summary: Confirma (personal) um check-in que o aluno fez sozinho
+      operationId: claimCheckIn
+      description: >-
+        Somente admin ou o personal dono do aluno — nunca o próprio aluno.
+        Define `performed_by: "personal"`, fazendo o check-in passar a
+        contar no ciclo de atendimento do personal a partir de agora.
+        Idempotente — confirmar um check-in já confirmado apenas reafirma.
+      responses:
+        "200":
+          description: Check-in confirmado pelo personal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/view:
     parameters:
@@ -2730,6 +2764,14 @@ components:
       type: string
       enum: [in_progress, completed]
 
+    WorkoutCheckInPerformedBy:
+      type: string
+      enum: [aluno, personal]
+      description: >-
+        Quem realizou o check-in. "personal" é o único valor que conta no
+        ciclo de atendimento do personal (ver AttendanceCycle) — "aluno" só
+        passa a contar se confirmado via POST .../check_ins/{id}/claim.
+
     WorkoutCheckIn:
       type: object
       properties:
@@ -2739,6 +2781,7 @@ components:
         student_id: { type: string }
         student_name: { type: string }
         status: { $ref: "#/components/schemas/WorkoutCheckInStatus" }
+        performed_by: { $ref: "#/components/schemas/WorkoutCheckInPerformedBy" }
         exercises_completed: { type: integer }
         exercises_total: { type: integer }
         completed_exercise_ids:

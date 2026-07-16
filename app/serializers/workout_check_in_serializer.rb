@@ -11,6 +11,7 @@ class WorkoutCheckInSerializer
       student_id: @check_in.student_id.to_s,
       student_name: @check_in.student.name,
       status: @check_in.status,
+      performed_by: @check_in.performed_by,
       exercises_completed: @check_in.exercises_completed_count,
       exercises_total: @check_in.exercises_total,
       completed_exercise_ids: @check_in.exercise_check_ins.map { |ec| ec.exercise_id.to_s },

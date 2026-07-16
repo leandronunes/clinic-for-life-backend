@@ -85,6 +85,7 @@ Rails.application.routes.draw do
             member do
               post :finish
               post :view
+              post :claim
               patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
             end
             collection { get :current }

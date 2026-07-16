@@ -6,6 +6,15 @@ RSpec.describe WorkoutCheckIn do
     expect(check_in).not_to be_valid
   end
 
+  it "defaults performed_by to 'aluno'" do
+    expect(create(:workout_check_in).performed_by).to eq("aluno")
+  end
+
+  it "is invalid with a performed_by outside PERFORMED_BY_VALUES" do
+    check_in = build(:workout_check_in, performed_by: "bogus")
+    expect(check_in).not_to be_valid
+  end
+
   it "rejects a second in-progress check-in for the same workout at the DB level" do
     workout = create(:workout)
     create(:workout_check_in, workout: workout, status: "in_progress")
