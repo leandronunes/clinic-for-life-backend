@@ -47,28 +47,77 @@ RSpec.describe "Api::V1::Auth", type: :request do
       }
     end
 
-    it "creates a new student-role user and returns a session token" do
+    it "creates a new student-role user with its own student profile, and returns a session token" do
       expect do
         post "/api/v1/auth/register", params: valid_params
-      end.to change(User, :count).by(1)
+      end.to change(User, :count).by(1).and change(Student, :count).by(1)
 
       expect(response).to have_http_status(:created)
       expect(json_body["data"]["token"]).to be_present
       expect(json_body["data"]["user"]["email"]).to eq("joao@email.com")
       expect(json_body["data"]["user"]["role"]).to eq("student")
-      expect(json_body["data"]["user"]["student_id"]).to be_nil
+      expect(json_body["data"]["user"]["student_id"]).to be_present
+
+      student = Student.find(json_body["data"]["user"]["student_id"])
+      expect(student.name).to eq("João Silva")
+      expect(student.email).to eq("joao@email.com")
     end
 
-    it "links the user to an existing student record with the same email" do
+    it "links the user to an existing student record with the same email, instead of creating a new one" do
       student = create(:student, email: "joao@email.com")
 
-      post "/api/v1/auth/register", params: valid_params
+      expect do
+        post "/api/v1/auth/register", params: valid_params
+      end.not_to change(Student, :count)
 
       expect(response).to have_http_status(:created)
       user = User.find_by(email: "joao@email.com")
       expect(user.student_id).to eq(student.id)
       expect(json_body["data"]["user"]["student_id"]).to eq(student.id.to_s)
       expect(json_body["data"]["user"]["role"]).to eq("student")
+    end
+
+    it "lets the newly self-registered student access their own profile" do
+      post "/api/v1/auth/register", params: valid_params
+      user = User.find_by(email: "joao@email.com")
+
+      get "/api/v1/students/#{user.student_id}", headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["id"]).to eq(user.student_id.to_s)
+    end
+
+    it "makes the newly self-registered student show up in the admin's student listing" do
+      admin = create(:user, :admin)
+      post "/api/v1/auth/register", params: valid_params
+      user = User.find_by(email: "joao@email.com")
+
+      get "/api/v1/students", headers: auth_headers(admin)
+
+      expect(json_body["data"].map { |s| s["id"] }).to include(user.student_id.to_s)
+    end
+
+    it "gives two same-named students their own independent profiles, matched only by e-mail" do
+      first_params = { name: "Ana Carolina", email: "ana@email.com",
+                        password: "Str0ng@Pass", password_confirmation: "Str0ng@Pass" }
+      second_params = { name: "Ana Carolina", email: "ana.carolina2@email.com",
+                         password: "Str0ng@Pass", password_confirmation: "Str0ng@Pass" }
+
+      post "/api/v1/auth/register", params: first_params
+      first_user = User.find_by(email: "ana@email.com")
+      post "/api/v1/auth/register", params: second_params
+      second_user = User.find_by(email: "ana.carolina2@email.com")
+
+      expect(first_user.student_id).to be_present
+      expect(second_user.student_id).to be_present
+      expect(second_user.student_id).not_to eq(first_user.student_id)
+
+      # Each can access their own profile — and only their own.
+      get "/api/v1/students/#{second_user.student_id}", headers: auth_headers(second_user)
+      expect(response).to have_http_status(:ok)
+
+      get "/api/v1/students/#{first_user.student_id}", headers: auth_headers(second_user)
+      expect(response).to have_http_status(:forbidden)
     end
 
     it "links the user to an existing trainer record with the same email and sets role to personal" do
@@ -92,9 +141,11 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(json_body["error"]).to be_present
     end
 
-    it "rejects a weak password" do
-      post "/api/v1/auth/register", params: valid_params.merge(password: "weak",
-                                                               password_confirmation: "weak")
+    it "rejects a weak password, without leaving an orphaned student profile behind" do
+      expect do
+        post "/api/v1/auth/register", params: valid_params.merge(password: "weak",
+                                                                 password_confirmation: "weak")
+      end.not_to change(Student, :count)
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
@@ -122,15 +173,16 @@ RSpec.describe "Api::V1::Auth", type: :request do
         .and_return(google_userinfo)
     end
 
-    it "creates a new student-role user on first Google login and returns a token" do
+    it "creates a new student-role user with its own student profile on first Google login" do
       expect do
         post "/api/v1/auth/google", params: { access_token: access_token }
-      end.to change(User, :count).by(1)
+      end.to change(User, :count).by(1).and change(Student, :count).by(1)
 
       expect(response).to have_http_status(:created)
       expect(json_body["data"]["token"]).to be_present
       expect(json_body["data"]["user"]["email"]).to eq("joao@email.com")
       expect(json_body["data"]["user"]["role"]).to eq("student")
+      expect(json_body["data"]["user"]["student_id"]).to be_present
     end
 
     it "logs in an existing user without creating a new account" do
@@ -144,10 +196,12 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(json_body["data"]["user"]["id"]).to eq(existing.id.to_s)
     end
 
-    it "links new user to an existing student record with the same email" do
+    it "links new user to an existing student record with the same email, instead of creating a new one" do
       student = create(:student, email: "joao@email.com")
 
-      post "/api/v1/auth/google", params: { access_token: access_token }
+      expect do
+        post "/api/v1/auth/google", params: { access_token: access_token }
+      end.not_to change(Student, :count)
 
       user = User.find_by(email: "joao@email.com")
       expect(user.student_id).to eq(student.id)

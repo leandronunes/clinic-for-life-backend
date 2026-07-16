@@ -18,7 +18,8 @@ module Api
 
       # POST /api/v1/auth/register
       # Self-service registration. Associates the new user account with an
-      # existing trainer or student record when the e-mail matches one.
+      # existing trainer or student record when the e-mail matches one;
+      # otherwise builds a fresh student profile (see #build_student_if_needed).
       def register
         email = params[:email].to_s.downcase.strip
 
@@ -29,7 +30,6 @@ module Api
 
         trainer = Trainer.find_by("lower(email) = ?", email)
         student = Student.find_by("lower(email) = ?", email)
-
         role = trainer.present? ? "personal" : "student"
 
         user = User.new(
@@ -38,9 +38,9 @@ module Api
           password: params[:password],
           password_confirmation: params[:password_confirmation],
           role: role,
-          trainer: trainer,
-          student: student
+          trainer: trainer
         )
+        build_student_if_needed(user, student: student, role: role, name: params[:name], email: email)
 
         if user.save
           audit!("user.register", record: user)
@@ -77,10 +77,10 @@ module Api
           email: email,
           role: role,
           trainer: trainer,
-          student: student,
           password: random_password,
           password_confirmation: random_password
         )
+        build_student_if_needed(user, student: student, role: role, name: name, email: email)
 
         if user.save
           audit!("user.google_register", record: user)
@@ -117,6 +117,20 @@ module Api
       end
 
       private
+
+      # A self-registered "student" always ends up with a real profile: if
+      # staff already pre-created a Student row matching this e-mail, link
+      # to it; otherwise build a brand-new one now, saved atomically together
+      # with `user` by the caller. Without this, the account is left
+      # orphaned — invisible in the admin's student listing, and unable to
+      # reach any student-scoped page.
+      def build_student_if_needed(user, student:, role:, name:, email:)
+        if student
+          user.student = student
+        elsif role == "student"
+          user.build_student(name: name, email: email)
+        end
+      end
 
       def auth_me_params
         params.permit(:name, :email)

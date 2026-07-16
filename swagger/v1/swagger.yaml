@@ -105,6 +105,9 @@ paths:
       description: >-
         Associa automaticamente a conta a um Trainer ou Student existente
         quando o e-mail informado já estiver cadastrado como personal/aluno.
+        Quando nenhum Trainer casa com o e-mail e também não há um Student
+        pré-cadastrado, cria um novo perfil de Student junto com a conta —
+        toda conta "student" sempre termina com um `student_id` válido.
       security: []
       requestBody:
         required: true
