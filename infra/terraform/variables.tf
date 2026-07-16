@@ -11,9 +11,15 @@ variable "s3_bucket_name" {
 }
 
 variable "raw_prefix" {
-  description = "S3 key prefix for transient raw exercise-video uploads, watched by the S3 event trigger."
+  description = "S3 key prefix for transient raw exercise-video uploads made in production, watched by the S3 event trigger."
   type        = string
   default     = "uploads/raw/"
+}
+
+variable "dev_raw_prefix" {
+  description = "S3 key prefix for transient raw exercise-video uploads made from a local/dev environment (see S3Presigner#env_prefix), watched by a second S3 event trigger so dev uploads get compressed too, independently of and never mixed with production keys."
+  type        = string
+  default     = "dev/uploads/raw/"
 }
 
 variable "raw_upload_expiration_days" {

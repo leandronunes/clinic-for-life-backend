@@ -19,19 +19,27 @@ resource "aws_iam_role_policy_attachment" "basic_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Scoped tightly: read only the transient raw/ prefix, write only under
-# uploads/ (the final key the Lambda writes the compressed result to).
+# Scoped tightly: read only the transient raw/ prefixes (production and
+# dev), write only under the matching final uploads/ prefix (the key the
+# Lambda writes the compressed result to) — dev and production stay in
+# their own namespaces.
 data "aws_iam_policy_document" "s3_access" {
   statement {
-    sid       = "ReadRaw"
-    actions   = ["s3:GetObject"]
-    resources = ["${data.aws_s3_bucket.app.arn}/${var.raw_prefix}*"]
+    sid     = "ReadRaw"
+    actions = ["s3:GetObject"]
+    resources = [
+      "${data.aws_s3_bucket.app.arn}/${var.raw_prefix}*",
+      "${data.aws_s3_bucket.app.arn}/${var.dev_raw_prefix}*",
+    ]
   }
 
   statement {
-    sid       = "WriteFinal"
-    actions   = ["s3:PutObject"]
-    resources = ["${data.aws_s3_bucket.app.arn}/uploads/*"]
+    sid     = "WriteFinal"
+    actions = ["s3:PutObject"]
+    resources = [
+      "${data.aws_s3_bucket.app.arn}/uploads/*",
+      "${data.aws_s3_bucket.app.arn}/dev/uploads/*",
+    ]
   }
 }
 

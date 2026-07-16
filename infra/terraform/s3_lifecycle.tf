@@ -19,4 +19,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "app" {
       days = var.raw_upload_expiration_days
     }
   }
+
+  rule {
+    id     = "expire-dev-raw-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = var.dev_raw_prefix
+    }
+
+    expiration {
+      days = var.raw_upload_expiration_days
+    }
+  }
 }
