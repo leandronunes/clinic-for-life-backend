@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_184319) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_18_150521) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -210,6 +210,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_184319) do
     t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
   end
 
+  create_table "schedule_plan_slots", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes", null: false
+    t.bigint "schedule_plan_id", null: false
+    t.string "time", null: false
+    t.datetime "updated_at", null: false
+    t.integer "weekday", null: false
+    t.index ["schedule_plan_id", "weekday"], name: "index_schedule_plan_slots_on_schedule_plan_id_and_weekday", unique: true
+    t.index ["schedule_plan_id"], name: "index_schedule_plan_slots_on_schedule_plan_id"
+  end
+
+  create_table "schedule_plans", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "ends_on", null: false
+    t.text "notes"
+    t.date "starts_on", null: false
+    t.bigint "student_id", null: false
+    t.bigint "trainer_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["student_id"], name: "index_schedule_plans_on_student_id"
+    t.index ["trainer_id"], name: "index_schedule_plans_on_trainer_id"
+  end
+
+  create_table "schedule_sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes", null: false
+    t.text "notes"
+    t.bigint "schedule_plan_id"
+    t.datetime "starts_at", null: false
+    t.string "status", default: "planned", null: false
+    t.bigint "student_id", null: false
+    t.bigint "trainer_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "workout_id"
+    t.index ["schedule_plan_id"], name: "index_schedule_sessions_on_schedule_plan_id"
+    t.index ["starts_at"], name: "index_schedule_sessions_on_starts_at"
+    t.index ["student_id", "starts_at"], name: "index_schedule_sessions_on_student_id_and_starts_at"
+    t.index ["student_id"], name: "index_schedule_sessions_on_student_id"
+    t.index ["trainer_id", "starts_at"], name: "index_schedule_sessions_on_trainer_id_and_starts_at"
+    t.index ["trainer_id"], name: "index_schedule_sessions_on_trainer_id"
+    t.index ["workout_id"], name: "index_schedule_sessions_on_workout_id"
+  end
+
   create_table "structural_assessments", force: :cascade do |t|
     t.boolean "cavus_foot_arch", default: false, null: false
     t.datetime "created_at", null: false
@@ -336,6 +379,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_184319) do
   add_foreign_key "exercises", "workouts"
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
   add_foreign_key "push_subscriptions", "users"
+  add_foreign_key "schedule_plan_slots", "schedule_plans"
+  add_foreign_key "schedule_plans", "students"
+  add_foreign_key "schedule_plans", "trainers"
+  add_foreign_key "schedule_sessions", "schedule_plans"
+  add_foreign_key "schedule_sessions", "students"
+  add_foreign_key "schedule_sessions", "trainers"
+  add_foreign_key "schedule_sessions", "workouts"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"
   add_foreign_key "users", "students"

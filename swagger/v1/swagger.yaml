@@ -64,6 +64,10 @@ tags:
     description: Parceiros exibidos na vitrine
   - name: Push Subscriptions
     description: Assinaturas de notificações push do navegador (VAPID)
+  - name: Schedule
+    description: >-
+      Calendário de treinos dinâmico — planos recorrentes e as sessões
+      agendadas geradas a partir deles
 
 paths:
   /api/v1/auth/login:
@@ -354,6 +358,145 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/schedule_sessions:
+    get:
+      tags: [Schedule]
+      summary: Lista sessões agendadas num intervalo de datas
+      operationId: listScheduleSessions
+      description: >-
+        `from`/`to` são obrigatórios (YYYY-MM-DD, inclusive). Aluno vê só a
+        própria agenda; personal vê só o próprio portfólio; admin vê tudo e
+        pode filtrar por `trainer_id`/`student_id`.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: trainer_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: Só tem efeito para o papel admin
+        - name: student_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sessões ordenadas por starts_at crescente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ScheduleSession" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: from ou to ausentes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/schedule_sessions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Schedule]
+      summary: Atualiza uma sessão agendada
+      operationId: updateScheduleSession
+      description: Requer papel `admin` ou `personal` dono do aluno — aluno nunca edita a própria agenda.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                starts_at: { type: string, format: date-time }
+                duration_minutes: { type: integer, minimum: 15, maximum: 240 }
+                status: { $ref: "#/components/schemas/ScheduleSessionStatus" }
+                notes: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Sessão atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ScheduleSession" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Schedule]
+      summary: Cancela (remove) uma sessão agendada
+      operationId: deleteScheduleSession
+      description: Hard delete — requer papel `admin` ou `personal` dono do aluno.
+      responses:
+        "204":
+          description: Sessão removida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/schedule_plans:
+    post:
+      tags: [Schedule]
+      summary: Cria um plano recorrente e expande em N sessões
+      operationId: createSchedulePlan
+      description: >-
+        Requer papel `admin` ou `personal` dono do aluno. As sessões são
+        geradas dia a dia entre `starts_on` e `ends_on` (inclusive) para cada
+        dia da semana presente em `weekdays`, no horário local de
+        America/Sao_Paulo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchedulePlanInput" }
+      responses:
+        "201":
+          description: Plano criado e sessões geradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      created: { type: integer }
+                      sessions:
+                        type: array
+                        items: { $ref: "#/components/schemas/ScheduleSession" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: >-
+            weekdays vazio, ends_on antes de starts_on, intervalo maior que
+            366 dias, ou duration_minutes fora de 15..240
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/uploads/presign:
     post:
@@ -2871,6 +3014,58 @@ components:
         emoji: { type: string }
         author_name: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+
+    ScheduleSessionStatus:
+      type: string
+      enum: [planned, done, missed, canceled]
+
+    ScheduleSession:
+      type: object
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        student_name: { type: string }
+        trainer_id: { type: string }
+        trainer_name: { type: string, nullable: true }
+        starts_at: { type: string, format: date-time }
+        duration_minutes: { type: integer }
+        status: { $ref: "#/components/schemas/ScheduleSessionStatus" }
+        workout_id: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        plan_id:
+          type: string
+          nullable: true
+          description: Presente quando a sessão foi gerada por um SchedulePlan (ausente numa sessão avulsa)
+
+    WeekdaySlot:
+      type: object
+      required: [weekday, time, duration_minutes]
+      properties:
+        weekday:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: 0 = domingo .. 6 = sábado
+        time:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          description: "Horário local (America/Sao_Paulo), formato HH:mm"
+        duration_minutes: { type: integer, minimum: 15, maximum: 240 }
+
+    SchedulePlanInput:
+      type: object
+      required: [student_id, weekdays, starts_on, ends_on]
+      properties:
+        student_id: { type: string }
+        weekdays:
+          type: array
+          items: { $ref: "#/components/schemas/WeekdaySlot" }
+        starts_on: { type: string, format: date }
+        ends_on:
+          type: string
+          format: date
+          description: Inclusive; o intervalo não pode ultrapassar 366 dias
+        notes: { type: string, nullable: true, maxLength: 500 }
 
     Exam:
       type: object
