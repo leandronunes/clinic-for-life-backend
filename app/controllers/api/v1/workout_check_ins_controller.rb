@@ -125,6 +125,26 @@ module Api
         render_data(WorkoutCheckInSerializer.new(check_in.reload).as_json)
       end
 
+      # PATCH /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/pse
+      #
+      # Registers the student's Percepção Subjetiva de Esforço (PSE, 1-10)
+      # for a completed check-in — captured once, right after the workout is
+      # finished (see docs on WorkoutCheckIn#pse). Only makes sense once the
+      # check-in is completed; re-calling this is allowed (no "already set"
+      # guard) so a network retry from the frontend never needs special
+      # handling.
+      def update_pse
+        check_in = @workout.workout_check_ins.find(params[:id])
+        return render_pse_requires_completed unless check_in.status == "completed"
+        return render_pse_missing if params[:pse].blank?
+
+        check_in.update!(pse: params[:pse])
+        audit!("workout_check_in.update_pse", record: check_in, metadata: { pse: check_in.pse })
+        render_data(WorkoutCheckInSerializer.new(check_in).as_json)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_content
+      end
+
       private
 
       def set_workout
@@ -148,6 +168,15 @@ module Api
 
       def already_finished
         render json: { error: "Check-in já finalizado" }, status: :unprocessable_content
+      end
+
+      def render_pse_requires_completed
+        render json: { error: "Só é possível registrar a PSE de um check-in concluído" },
+               status: :unprocessable_content
+      end
+
+      def render_pse_missing
+        render json: { error: "Informe a PSE (1 a 10)" }, status: :unprocessable_content
       end
 
       def render_duplicate_check_in

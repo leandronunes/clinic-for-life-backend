@@ -87,6 +87,7 @@ Rails.application.routes.draw do
               post :view
               post :claim
               patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
+              patch "pse", action: :update_pse, as: :pse
             end
             collection { get :current }
             resources :feedbacks, only: %i[create update destroy], controller: "check_in_feedbacks"

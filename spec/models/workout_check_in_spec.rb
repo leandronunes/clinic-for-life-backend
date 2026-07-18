@@ -85,6 +85,22 @@ RSpec.describe WorkoutCheckIn do
     end
   end
 
+  describe "#pse" do
+    it "accepts values within 1..10" do
+      expect(build(:workout_check_in, pse: 1)).to be_valid
+      expect(build(:workout_check_in, pse: 10)).to be_valid
+    end
+
+    it "rejects values outside 1..10" do
+      expect(build(:workout_check_in, pse: 0)).not_to be_valid
+      expect(build(:workout_check_in, pse: 11)).not_to be_valid
+    end
+
+    it "allows nil (not yet captured)" do
+      expect(build(:workout_check_in, pse: nil)).to be_valid
+    end
+  end
+
   describe "#mark_viewed!" do
     it "stamps viewed_at when not yet viewed" do
       check_in = create(:workout_check_in, :completed)

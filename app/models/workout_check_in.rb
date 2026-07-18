@@ -14,6 +14,7 @@ class WorkoutCheckIn < ApplicationRecord
 
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :performed_by, presence: true, inclusion: { in: PERFORMED_BY_VALUES }
+  validates :pse, inclusion: { in: 1..10 }, allow_nil: true
 
   scope :in_progress, -> { where(status: "in_progress") }
   scope :completed, -> { where(status: "completed") }

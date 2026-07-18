@@ -275,6 +275,75 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
     end
   end
 
+  describe "PATCH /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/pse" do
+    def set_pse(check_in, pse:, user: student_user)
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/pse",
+            params: { pse: pse }, headers: auth_headers(user)
+    end
+
+    it "registers the PSE on a completed check-in" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      set_pse(check_in, pse: 7)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["pse"]).to eq(7)
+      expect(check_in.reload.pse).to eq(7)
+    end
+
+    it "returns 422 when the check-in is still in progress" do
+      check_in = create(:workout_check_in, workout: workout, student: student)
+      set_pse(check_in, pse: 7)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(check_in.reload.pse).to be_nil
+    end
+
+    it "returns 422 for a value outside 1..10" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      set_pse(check_in, pse: 11)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "returns 422 when pse is missing" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      set_pse(check_in, pse: nil)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "allows re-registering the PSE (no 'already set' guard)" do
+      check_in = create(:workout_check_in, :completed, :with_pse, workout: workout, student: student)
+      set_pse(check_in, pse: 3)
+
+      expect(response).to have_http_status(:ok)
+      expect(check_in.reload.pse).to eq(3)
+    end
+
+    it "returns 404 for a check-in that does not exist" do
+      patch "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/999999/pse",
+            params: { pse: 7 }, headers: auth_headers(student_user)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "forbids a personal outside the student's portfolio" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+      other_personal = create(:user, :personal)
+      set_pse(check_in, pse: 7, user: other_personal)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(check_in.reload.pse).to be_nil
+    end
+
+    it "records an audit log on registering the PSE" do
+      check_in = create(:workout_check_in, :completed, workout: workout, student: student)
+
+      expect { set_pse(check_in, pse: 7) }.to change(AuditLog, :count).by(1)
+      expect(AuditLog.last.action).to eq("workout_check_in.update_pse")
+    end
+  end
+
   describe "DELETE /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id" do
     it "lets the student remove their own completed check-in" do
       check_in = create(:workout_check_in, :completed, workout: workout, student: student)

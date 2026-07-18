@@ -1980,6 +1980,48 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/pse:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+      - $ref: "#/components/parameters/WorkoutIdParam"
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [CheckIns]
+      summary: Registra a Percepção Subjetiva de Esforço (PSE) do check-in
+      operationId: updateCheckInPse
+      description: >-
+        Só pode ser chamado com o check-in já concluído. Permite re-envio
+        (idempotente por natureza — não há trava de "já definido").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pse]
+              properties:
+                pse: { type: integer, minimum: 1, maximum: 10 }
+      responses:
+        "200":
+          description: PSE registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkoutCheckIn" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Check-in ainda em andamento, PSE ausente, ou fora de 1-10
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/students/{student_id}/check_ins:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
@@ -2797,6 +2839,15 @@ components:
           format: date-time
           nullable: true
           description: "Preenchido quando o personal/admin visualiza este check-in concluído"
+        pse:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10
+          description: >-
+            Percepção Subjetiva de Esforço (escala de Borg CR-10 simplificada, 1 a 10).
+            `null` até ser registrada. Só pode ser definida quando o check-in já está
+            concluído; a captura acontece uma vez, no momento da conclusão do treino.
         feedbacks:
           type: array
           items: { $ref: "#/components/schemas/Feedback" }

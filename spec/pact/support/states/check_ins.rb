@@ -15,6 +15,8 @@ module PactStates
     TODAY_CHECK_IN_ID = 2354
     CLAIM_WORKOUT_ID = 2345
     CLAIM_CHECK_IN_ID = 2355
+    PSE_WORKOUT_ID = 2346
+    PSE_CHECK_IN_ID = 2356
 
     def self.definitions
       proc do
@@ -114,6 +116,20 @@ module PactStates
                                                   status: "completed", completed_at: Time.current,
                                                   performed_by: "aluno")
             PactStateContext.as(FactoryBot.create(:user, :personal, trainer: trainer))
+          end
+        end
+
+        provider_state "student #{STUDENT_ID} has a completed check-in #{PSE_CHECK_IN_ID} on " \
+                       "workout #{PSE_WORKOUT_ID} with no PSE recorded yet" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: PSE_WORKOUT_ID, student: student, title: "Treino A")
+            FactoryBot.create(:workout_check_in, id: PSE_CHECK_IN_ID, workout: workout, student: student,
+                                                  status: "completed", completed_at: Time.current)
+            student_user = FactoryBot.create(:user, :student_account, student: student)
+            PactStateContext.as(student_user)
           end
         end
       end
