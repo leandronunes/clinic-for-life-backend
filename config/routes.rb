@@ -29,6 +29,12 @@ Rails.application.routes.draw do
       # for reviewing and giving feedback/reactions — not student-scoped.
       get "completed_check_ins", to: "completed_check_ins#index"
 
+      # Agenda — calendário de treinos dinâmico. Recursos top-level (não
+      # aninhados sob /students/:id/), filtrados por role dentro do
+      # controller — mesmo formato de completed_check_ins acima.
+      resources :schedule_sessions, only: %i[index update destroy]
+      resources :schedule_plans, only: %i[create]
+
       # Uploads — presigned S3 URLs
       post "uploads/presign", to: "uploads#presign"
 

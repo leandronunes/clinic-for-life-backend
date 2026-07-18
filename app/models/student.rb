@@ -13,6 +13,8 @@ class Student < ApplicationRecord
   has_many :exams, dependent: :destroy
   has_many :workout_check_ins, dependent: :destroy
   has_many :attendance_cycles, dependent: :destroy
+  has_many :schedule_plans, dependent: :destroy
+  has_many :schedule_sessions, dependent: :destroy
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },
