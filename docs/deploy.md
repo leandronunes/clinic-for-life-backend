@@ -46,6 +46,7 @@ gh workflow run release.yml -f tag=v1.1.0
 | `SMOKE_BASE_URL`      | URL pública de produção (ex.: `https://api.clinicforlife.com.br`). |
 | `SMOKE_EMAIL`         | E-mail de uma conta real de produção, dedicada a smoke test.      |
 | `SMOKE_PASSWORD`      | Senha dessa conta.                                                |
+| `INTERNAL_CRON_TOKEN` | Token compartilhado que autentica `.github/workflows/schedule_mark_missed.yml` contra `POST /api/v1/internal/cron/mark_missed_sessions`. Deve ter **o mesmo valor** configurado como env var no serviço Render (Settings → Environment) — nenhum dos dois lados é setado automaticamente, são dois passos manuais. |
 
 No Render: **Settings → Auto-Deploy → Off** (o deploy passa a ser só via
 Deploy Hook, chamado pelo workflow).

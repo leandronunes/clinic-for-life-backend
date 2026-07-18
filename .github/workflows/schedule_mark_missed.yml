@@ -1,0 +1,27 @@
+name: Mark missed schedule sessions
+
+# Chama o endpoint interno que marca ScheduleSession "planned" vencida como
+# "missed" (ver app/services/schedule_missed_marker_service.rb e
+# app/controllers/api/v1/cron_controller.rb). Não há worker persistente
+# neste app para rodar um job agendado de verdade — este workflow é a
+# infraestrutura de cron, reaproveitando a mesma orquestração já usada para
+# o deploy (GitHub Actions → produção).
+#
+# Requer dois secrets configurados no repositório (Settings → Secrets and
+# variables → Actions), documentados em docs/deploy.md:
+#   SMOKE_BASE_URL      — já existe, URL pública de produção
+#   INTERNAL_CRON_TOKEN — novo, deve ter o mesmo valor configurado como env
+#                          var no serviço Render
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  mark_missed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call internal mark-missed endpoint
+        run: |
+          curl -sf -X POST "${{ secrets.SMOKE_BASE_URL }}/api/v1/internal/cron/mark_missed_sessions" \
+            -H "Authorization: Bearer ${{ secrets.INTERNAL_CRON_TOKEN }}"
