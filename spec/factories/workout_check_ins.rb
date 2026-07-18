@@ -12,5 +12,9 @@ FactoryBot.define do
     trait :performed_by_personal do
       performed_by { "personal" }
     end
+
+    trait :with_pse do
+      pse { 7 }
+    end
   end
 end
