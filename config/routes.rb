@@ -35,6 +35,10 @@ Rails.application.routes.draw do
       resources :schedule_sessions, only: %i[index update destroy]
       resources :schedule_plans, only: %i[create]
 
+      # Chamado só por automação (workflow agendado), autenticado por token
+      # compartilhado — não faz parte do contrato consumido pelo frontend.
+      post "internal/cron/mark_missed_sessions", to: "cron#mark_missed_sessions"
+
       # Uploads — presigned S3 URLs
       post "uploads/presign", to: "uploads#presign"
 
