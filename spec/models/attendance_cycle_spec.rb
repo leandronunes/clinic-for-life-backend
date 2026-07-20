@@ -27,32 +27,45 @@ RSpec.describe AttendanceCycle, type: :model do
   end
 
   describe "#completed_workouts" do
-    it "counts only completed, personal-performed check-ins whose completed_at falls inside the cycle" do
+    it "counts only completed, mutually confirmed check-ins whose completed_at falls inside the cycle" do
       trainer = create(:trainer)
       student = create(:student, trainer: trainer)
       workout = create(:workout, student: student)
       cycle = create(:attendance_cycle, student: student, started_at: 10.days.ago, ended_at: 2.days.ago)
 
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
-                                                                      completed_at: 5.days.ago)
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
-                                                                      completed_at: 4.days.ago)
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
+                                                                   completed_at: 5.days.ago)
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
+                                                                   completed_at: 4.days.ago)
       # Outside the cycle window
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
-                                                                      completed_at: 1.day.ago)
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
+                                                                   completed_at: 1.day.ago)
       # In progress, never completed
       create(:workout_check_in, workout: workout, student: student)
 
       expect(cycle.completed_workouts).to eq(2)
     end
 
-    it "does not count a check-in the student performed themselves, unclaimed by staff" do
+    it "does not count a check-in only the student confirmed, not yet confirmed by staff" do
       trainer = create(:trainer)
       student = create(:student, trainer: trainer)
       workout = create(:workout, student: student)
       cycle = create(:attendance_cycle, student: student, started_at: 10.days.ago, ended_at: 2.days.ago)
 
-      create(:workout_check_in, :completed, workout: workout, student: student, completed_at: 5.days.ago)
+      create(:workout_check_in, :completed, :student_performed, workout: workout, student: student,
+                                                                  completed_at: 5.days.ago)
+
+      expect(cycle.completed_workouts).to eq(0)
+    end
+
+    it "does not count a check-in only staff confirmed, not yet confirmed by the student" do
+      trainer = create(:trainer)
+      student = create(:student, trainer: trainer)
+      workout = create(:workout, student: student)
+      cycle = create(:attendance_cycle, student: student, started_at: 10.days.ago, ended_at: 2.days.ago)
+
+      create(:workout_check_in, :completed, :personal_performed, workout: workout, student: student,
+                                                                   completed_at: 5.days.ago)
 
       expect(cycle.completed_workouts).to eq(0)
     end

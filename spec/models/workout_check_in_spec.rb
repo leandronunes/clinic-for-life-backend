@@ -6,15 +6,6 @@ RSpec.describe WorkoutCheckIn do
     expect(check_in).not_to be_valid
   end
 
-  it "defaults performed_by to 'aluno'" do
-    expect(create(:workout_check_in).performed_by).to eq("aluno")
-  end
-
-  it "is invalid with a performed_by outside PERFORMED_BY_VALUES" do
-    check_in = build(:workout_check_in, performed_by: "bogus")
-    expect(check_in).not_to be_valid
-  end
-
   it "rejects a second in-progress check-in for the same workout at the DB level" do
     workout = create(:workout)
     create(:workout_check_in, workout: workout, status: "in_progress")
@@ -98,6 +89,55 @@ RSpec.describe WorkoutCheckIn do
 
     it "allows nil (not yet captured)" do
       expect(build(:workout_check_in, pse: nil)).to be_valid
+    end
+  end
+
+  describe "#mutually_confirmed?" do
+    it "is false when neither side has confirmed" do
+      expect(create(:workout_check_in).mutually_confirmed?).to be false
+    end
+
+    it "is false when only one side has confirmed" do
+      expect(create(:workout_check_in, :student_performed).mutually_confirmed?).to be false
+      expect(create(:workout_check_in, :personal_performed).mutually_confirmed?).to be false
+    end
+
+    it "is true only when both sides have confirmed" do
+      expect(create(:workout_check_in, :mutually_confirmed).mutually_confirmed?).to be true
+    end
+  end
+
+  describe "#confirm_as_student!" do
+    it "stamps student_confirmed_at when not yet confirmed" do
+      check_in = create(:workout_check_in, :personal_performed)
+      check_in.confirm_as_student!
+      expect(check_in.reload.student_confirmed_at).to be_present
+    end
+
+    it "is idempotent — does not overwrite an already-set timestamp" do
+      check_in = create(:workout_check_in, :mutually_confirmed)
+      original = check_in.student_confirmed_at
+
+      check_in.confirm_as_student!
+
+      expect(check_in.reload.student_confirmed_at).to eq(original)
+    end
+  end
+
+  describe "#confirm_as_personal!" do
+    it "stamps personal_confirmed_at when not yet confirmed" do
+      check_in = create(:workout_check_in, :student_performed)
+      check_in.confirm_as_personal!
+      expect(check_in.reload.personal_confirmed_at).to be_present
+    end
+
+    it "is idempotent — does not overwrite an already-set timestamp" do
+      check_in = create(:workout_check_in, :mutually_confirmed)
+      original = check_in.personal_confirmed_at
+
+      check_in.confirm_as_personal!
+
+      expect(check_in.reload.personal_confirmed_at).to eq(original)
     end
   end
 

@@ -13,9 +13,9 @@ RSpec.describe "Api::V1::AttendanceCycles", type: :request do
                                          contracted_workouts_per_cycle: 4)
       newer = create(:attendance_cycle, student: student, started_at: 2.months.ago, ended_at: 1.month.ago,
                                          contracted_workouts_per_cycle: 4)
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
                                                                       completed_at: 6.weeks.ago)
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
                                                                       completed_at: 5.weeks.ago)
 
       get "/api/v1/students/#{student.id}/attendance_cycles", headers: auth_headers(admin)
@@ -34,9 +34,9 @@ RSpec.describe "Api::V1::AttendanceCycles", type: :request do
       workout = create(:workout, student: student)
       cycle = create(:attendance_cycle, student: student, started_at: 2.months.ago, ended_at: 1.month.ago,
                                          contracted_workouts_per_cycle: 1)
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
                                                                       completed_at: 6.weeks.ago)
-      create(:workout_check_in, :completed, :performed_by_personal, workout: workout, student: student,
+      create(:workout_check_in, :completed, :mutually_confirmed, workout: workout, student: student,
                                                                       completed_at: 5.weeks.ago)
 
       get "/api/v1/students/#{student.id}/attendance_cycles", headers: auth_headers(admin)

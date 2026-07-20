@@ -13,10 +13,12 @@ module PactStates
     DELETE_CHECK_IN_ID = 2353
     TODAY_WORKOUT_ID = 2344
     TODAY_CHECK_IN_ID = 2354
-    CLAIM_WORKOUT_ID = 2345
-    CLAIM_CHECK_IN_ID = 2355
+    CONFIRM_WORKOUT_ID = 2345
+    CONFIRM_CHECK_IN_ID = 2355
     PSE_WORKOUT_ID = 2346
     PSE_CHECK_IN_ID = 2356
+    STUDENT_CONFIRM_WORKOUT_ID = 2347
+    STUDENT_CONFIRM_CHECK_IN_ID = 2357
 
     def self.definitions
       proc do
@@ -105,17 +107,32 @@ module PactStates
           end
         end
 
-        provider_state "student #{STUDENT_ID} has a completed check-in #{CLAIM_CHECK_IN_ID} on " \
-                       "workout #{CLAIM_WORKOUT_ID} performed by the aluno, to claim" do
+        provider_state "student #{STUDENT_ID} has a completed check-in #{CONFIRM_CHECK_IN_ID} on " \
+                       "workout #{CONFIRM_WORKOUT_ID} confirmed only by the aluno, awaiting personal confirmation" do
           set_up do
             clean_database!
             trainer = FactoryBot.create(:trainer)
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
-            workout = FactoryBot.create(:workout, id: CLAIM_WORKOUT_ID, student: student, title: "Treino A")
-            FactoryBot.create(:workout_check_in, id: CLAIM_CHECK_IN_ID, workout: workout, student: student,
+            workout = FactoryBot.create(:workout, id: CONFIRM_WORKOUT_ID, student: student, title: "Treino A")
+            FactoryBot.create(:workout_check_in, id: CONFIRM_CHECK_IN_ID, workout: workout, student: student,
                                                   status: "completed", completed_at: Time.current,
-                                                  performed_by: "aluno")
+                                                  student_confirmed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :personal, trainer: trainer))
+          end
+        end
+
+        provider_state "student #{STUDENT_ID} has a completed check-in #{STUDENT_CONFIRM_CHECK_IN_ID} on " \
+                       "workout #{STUDENT_CONFIRM_WORKOUT_ID} confirmed only by the personal, awaiting student confirmation" do
+          set_up do
+            clean_database!
+            trainer = FactoryBot.create(:trainer)
+            student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
+            workout = FactoryBot.create(:workout, id: STUDENT_CONFIRM_WORKOUT_ID, student: student, title: "Treino A")
+            FactoryBot.create(:workout_check_in, id: STUDENT_CONFIRM_CHECK_IN_ID, workout: workout, student: student,
+                                                  status: "completed", completed_at: Time.current,
+                                                  personal_confirmed_at: Time.current)
+            student_user = FactoryBot.create(:user, :student_account, student: student)
+            PactStateContext.as(student_user)
           end
         end
 

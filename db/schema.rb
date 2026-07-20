@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_18_150521) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_233725) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -333,9 +333,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_18_150521) do
   create_table "workout_check_ins", force: :cascade do |t|
     t.datetime "completed_at"
     t.datetime "created_at", null: false
-    t.string "performed_by", default: "aluno", null: false
+    t.datetime "personal_confirmed_at"
     t.integer "pse"
     t.string "status", default: "in_progress", null: false
+    t.datetime "student_confirmed_at"
     t.bigint "student_id", null: false
     t.datetime "updated_at", null: false
     t.datetime "viewed_at"

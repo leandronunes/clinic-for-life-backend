@@ -1,11 +1,5 @@
 class WorkoutCheckIn < ApplicationRecord
   STATUSES = %w[in_progress completed].freeze
-  # Who performed the check-in — drives attendance-cycle counting (see
-  # AttendanceCycle#completed_workouts): only "personal" (staff-witnessed)
-  # check-ins count against the trainer's contracted quota. "aluno" means
-  # self check-in, which stays out of that count until/unless staff claims
-  # it (WorkoutCheckInsController#claim).
-  PERFORMED_BY_VALUES = %w[aluno personal].freeze
 
   belongs_to :workout
   belongs_to :student
@@ -13,12 +7,17 @@ class WorkoutCheckIn < ApplicationRecord
   has_many :check_in_feedbacks, dependent: :destroy
 
   validates :status, presence: true, inclusion: { in: STATUSES }
-  validates :performed_by, presence: true, inclusion: { in: PERFORMED_BY_VALUES }
   validates :pse, inclusion: { in: 1..10 }, allow_nil: true
 
   scope :in_progress, -> { where(status: "in_progress") }
   scope :completed, -> { where(status: "completed") }
-  scope :performed_by_personal, -> { where(performed_by: "personal") }
+  # Drives attendance-cycle counting (see AttendanceCycle#completed_workouts):
+  # a check-in only counts against the trainer's contracted quota once BOTH
+  # the student and staff (personal/admin) have confirmed it — whoever
+  # actually performs the check-in flow (create/toggle/finish) has their own
+  # side auto-confirmed (see WorkoutCheckInsController#create); the other
+  # side confirms explicitly via #confirm.
+  scope :mutually_confirmed, -> { where.not(student_confirmed_at: nil).where.not(personal_confirmed_at: nil) }
 
   def exercises_total
     workout.exercises.count
@@ -40,5 +39,17 @@ class WorkoutCheckIn < ApplicationRecord
 
   def mark_viewed!
     update!(viewed_at: Time.current) unless viewed_at
+  end
+
+  def mutually_confirmed?
+    student_confirmed_at.present? && personal_confirmed_at.present?
+  end
+
+  def confirm_as_student!
+    update!(student_confirmed_at: Time.current) if student_confirmed_at.nil?
+  end
+
+  def confirm_as_personal!
+    update!(personal_confirmed_at: Time.current) if personal_confirmed_at.nil?
   end
 end
