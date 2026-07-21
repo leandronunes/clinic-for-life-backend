@@ -30,7 +30,14 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student, status: "active")
             FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            # This state's "start a check-in" interaction relies on the acting
+            # user being the student: create's auto-confirm is
+            # current_user.student? ? student_confirmed_at : personal_confirmed_at
+            # (see WorkoutCheckInsController#create) — authenticating as staff
+            # here would flip which side gets auto-confirmed and mismatch the
+            # pact's expected body shape.
+            student_user = FactoryBot.create(:user, :student_account, student: student)
+            PactStateContext.as(student_user)
           end
         end
 
@@ -49,7 +56,7 @@ module PactStates
             FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout)
             FactoryBot.create(:exercise, id: OTHER_EXERCISE_ID, workout: workout)
             FactoryBot.create(:workout_check_in, id: CHECK_IN_ID, workout: workout, student: student,
-                                                  status: "in_progress")
+                                                  status: "in_progress", student_confirmed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :admin))
           end
         end
@@ -62,7 +69,8 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: HISTORY_WORKOUT_ID, student: student, title: "Treino A")
             FactoryBot.create(:workout_check_in, id: HISTORY_CHECK_IN_ID, workout: workout, student: student,
-                                                  status: "completed", completed_at: Time.current)
+                                                  status: "completed", completed_at: Time.current,
+                                                  student_confirmed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :admin))
           end
         end
@@ -75,7 +83,8 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: VIEW_WORKOUT_ID, student: student, title: "Treino A")
             FactoryBot.create(:workout_check_in, id: VIEW_CHECK_IN_ID, workout: workout, student: student,
-                                                  status: "completed", completed_at: Time.current)
+                                                  status: "completed", completed_at: Time.current,
+                                                  student_confirmed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :personal, trainer: trainer))
           end
         end
@@ -102,7 +111,8 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: TODAY_WORKOUT_ID, student: student, title: "Treino A")
             FactoryBot.create(:workout_check_in, id: TODAY_CHECK_IN_ID, workout: workout, student: student,
-                                                  status: "completed", completed_at: Time.current)
+                                                  status: "completed", completed_at: Time.current,
+                                                  student_confirmed_at: Time.current)
             PactStateContext.as(FactoryBot.create(:user, :admin))
           end
         end
@@ -144,7 +154,8 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: PSE_WORKOUT_ID, student: student, title: "Treino A")
             FactoryBot.create(:workout_check_in, id: PSE_CHECK_IN_ID, workout: workout, student: student,
-                                                  status: "completed", completed_at: Time.current)
+                                                  status: "completed", completed_at: Time.current,
+                                                  student_confirmed_at: Time.current)
             student_user = FactoryBot.create(:user, :student_account, student: student)
             PactStateContext.as(student_user)
           end
