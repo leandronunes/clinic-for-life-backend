@@ -9,8 +9,19 @@ FactoryBot.define do
       completed_at { Time.current }
     end
 
-    trait :performed_by_personal do
-      performed_by { "personal" }
+    trait :mutually_confirmed do
+      student_confirmed_at { Time.current }
+      personal_confirmed_at { Time.current }
+    end
+
+    trait :personal_performed do
+      student_confirmed_at { nil }
+      personal_confirmed_at { Time.current }
+    end
+
+    trait :student_performed do
+      student_confirmed_at { Time.current }
+      personal_confirmed_at { nil }
     end
 
     trait :with_pse do

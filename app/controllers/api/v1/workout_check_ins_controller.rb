@@ -37,7 +37,11 @@ module Api
           }, status: :unprocessable_content
         end
 
-        check_in = @workout.workout_check_ins.create!(student: @student, performed_by: performer)
+        check_in = @workout.workout_check_ins.create!(
+          student: @student,
+          student_confirmed_at: current_user.student? ? Time.current : nil,
+          personal_confirmed_at: current_user.student? ? nil : Time.current
+        )
         audit!("workout_check_in.create", record: check_in)
         render_data(WorkoutCheckInSerializer.new(check_in).as_json, status: :created)
       end
@@ -67,13 +71,13 @@ module Api
       # same authorization as every other action here (StudentScoped already
       # covers admin, the owning personal, and the student themselves).
       #
-      # Exception: once staff has claimed a check-in (performed_by
-      # "personal" — see #claim), it counts toward the trainer's attendance
+      # Exception: once staff has confirmed a check-in (personal_confirmed_at
+      # present — see #confirm), it counts toward the trainer's attendance
       # cycle, so the student can no longer delete (and thus can't silently
       # reset/overwrite) it — only admin or the owning personal can.
       def destroy
         check_in = @workout.workout_check_ins.find(params[:id])
-        if check_in.performed_by == "personal"
+        if check_in.personal_confirmed_at.present?
           authorize_staff_for_student!(@student)
           return if performed?
         end
@@ -83,23 +87,21 @@ module Api
         head :no_content
       end
 
-      # POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/claim
+      # POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/confirm
       #
-      # Staff (admin or the owning personal) confirms a check-in the student
-      # already did themselves, making it count toward the trainer's
-      # attendance cycle from now on. Idempotent — claiming an
-      # already-claimed check-in just re-confirms it. Only staff may call
-      # this at all (a student "claiming" their own check-in would defeat
-      # the whole point), enforced by #authorize_staff_for_student! rather
-      # than the self-inclusive authorize_student! that StudentScoped
-      # already ran.
-      def claim
-        authorize_staff_for_student!(@student)
-        return if performed?
-
+      # Confirms the caller's own side of the check-in: the student confirms
+      # the student side, staff (admin or the owning personal) confirms the
+      # personal side. Only counts toward the trainer's attendance cycle
+      # once BOTH sides are confirmed (see WorkoutCheckIn#mutually_confirmed).
+      # Idempotent — confirming an already-confirmed side is a no-op.
+      # Authorization is entirely StudentScoped's (admin, the owning
+      # personal, or the student themselves) — no extra check here, since
+      # both directions are now legitimate (previously only staff could
+      # call this, because only "staff confirms student" made sense).
+      def confirm
         check_in = @workout.workout_check_ins.find(params[:id])
-        check_in.update!(performed_by: "personal")
-        audit!("workout_check_in.claim", record: check_in)
+        current_user.student? ? check_in.confirm_as_student! : check_in.confirm_as_personal!
+        audit!("workout_check_in.confirm", record: check_in)
         render_data(WorkoutCheckInSerializer.new(check_in).as_json)
       end
 
@@ -157,13 +159,6 @@ module Api
       # enforced, not just hidden client-side).
       def today_completed_check_in
         @workout.workout_check_ins.completed.where(completed_at: Time.zone.now.all_day).first
-      end
-
-      # Staff (admin/personal) creating a check-in on a student's behalf is
-      # treated the same as claiming one: it's staff-witnessed from the
-      # start, so it counts toward the attendance cycle immediately.
-      def performer
-        current_user.student? ? "aluno" : "personal"
       end
 
       def already_finished

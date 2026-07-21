@@ -95,7 +95,7 @@ Rails.application.routes.draw do
             member do
               post :finish
               post :view
-              post :claim
+              post :confirm
               patch "exercises/:exercise_id", action: :toggle_exercise, as: :toggle_exercise
               patch "pse", action: :update_pse, as: :pse
             end

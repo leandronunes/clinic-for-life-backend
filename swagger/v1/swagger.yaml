@@ -1896,10 +1896,10 @@ paths:
         O próprio aluno pode remover seu check-in (ex.: iniciado por engano),
         além de admin e do personal dono do aluno. Cascata: apaga também os
         exercícios marcados e o feedback associados a este check-in. Exceção:
-        uma vez que o check-in tenha sido feito ou confirmado pelo personal
-        (`performed_by: "personal"`, ver `/claim`), ele conta no ciclo de
-        atendimento do personal e o aluno não pode mais removê-lo — somente
-        admin ou o personal dono do aluno.
+        uma vez que o personal tenha confirmado o check-in
+        (`personal_confirmed_at` presente, ver `/confirm`), ele conta no
+        ciclo de atendimento do personal e o aluno não pode mais removê-lo —
+        somente admin ou o personal dono do aluno.
       responses:
         "204":
           description: Removido com sucesso
@@ -1973,23 +1973,26 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/claim:
+  /api/v1/students/{student_id}/workouts/{workout_id}/check_ins/{id}/confirm:
     parameters:
       - $ref: "#/components/parameters/StudentIdParam"
       - $ref: "#/components/parameters/WorkoutIdParam"
       - $ref: "#/components/parameters/IdParam"
     post:
       tags: [CheckIns]
-      summary: Confirma (personal) um check-in que o aluno fez sozinho
-      operationId: claimCheckIn
+      summary: Confirma o próprio lado do chamador (aluno ou personal)
+      operationId: confirmCheckIn
       description: >-
-        Somente admin ou o personal dono do aluno — nunca o próprio aluno.
-        Define `performed_by: "personal"`, fazendo o check-in passar a
-        contar no ciclo de atendimento do personal a partir de agora.
-        Idempotente — confirmar um check-in já confirmado apenas reafirma.
+        Confirma o lado de quem chama: o aluno confirma `student_confirmed_at`
+        (admin/personal não podem fazer isso por ele); staff (admin ou o
+        personal dono do aluno) confirma `personal_confirmed_at` (o aluno não
+        pode fazer isso por si mesmo). O check-in só passa a contar no ciclo
+        de atendimento do personal quando AMBOS os lados estiverem
+        confirmados. Idempotente — confirmar um lado já confirmado apenas
+        reafirma, sem alterar o timestamp original.
       responses:
         "200":
-          description: Check-in confirmado pelo personal
+          description: Check-in com o lado do chamador confirmado
           content:
             application/json:
               schema:
@@ -2952,14 +2955,6 @@ components:
       type: string
       enum: [in_progress, completed]
 
-    WorkoutCheckInPerformedBy:
-      type: string
-      enum: [aluno, personal]
-      description: >-
-        Quem realizou o check-in. "personal" é o único valor que conta no
-        ciclo de atendimento do personal (ver AttendanceCycle) — "aluno" só
-        passa a contar se confirmado via POST .../check_ins/{id}/claim.
-
     WorkoutCheckIn:
       type: object
       properties:
@@ -2969,7 +2964,24 @@ components:
         student_id: { type: string }
         student_name: { type: string }
         status: { $ref: "#/components/schemas/WorkoutCheckInStatus" }
-        performed_by: { $ref: "#/components/schemas/WorkoutCheckInPerformedBy" }
+        student_confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Preenchido quando o aluno confirma o próprio lado (auto-preenchido
+            se foi o aluno quem criou o check-in, ou via POST
+            .../check_ins/{id}/confirm).
+        personal_confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Preenchido quando staff (admin/personal) confirma o lado do
+            personal (auto-preenchido se foi staff quem criou o check-in, ou
+            via POST .../check_ins/{id}/confirm). Só conta no ciclo de
+            atendimento do personal (ver AttendanceCycle) quando AMBOS
+            student_confirmed_at e personal_confirmed_at estiverem presentes.
         exercises_completed: { type: integer }
         exercises_total: { type: integer }
         completed_exercise_ids:
