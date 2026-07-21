@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_142549) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -257,6 +257,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_142549) do
     t.bigint "student_id", null: false
     t.bigint "trainer_id", null: false
     t.datetime "updated_at", null: false
+    t.bigint "workout_check_in_id"
     t.bigint "workout_id"
     t.index ["schedule_plan_id"], name: "index_schedule_sessions_on_schedule_plan_id"
     t.index ["starts_at"], name: "index_schedule_sessions_on_starts_at"
@@ -264,6 +265,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_142549) do
     t.index ["student_id"], name: "index_schedule_sessions_on_student_id"
     t.index ["trainer_id", "starts_at"], name: "index_schedule_sessions_on_trainer_id_and_starts_at"
     t.index ["trainer_id"], name: "index_schedule_sessions_on_trainer_id"
+    t.index ["workout_check_in_id"], name: "index_schedule_sessions_on_workout_check_in_id", unique: true
     t.index ["workout_id"], name: "index_schedule_sessions_on_workout_id"
   end
 
@@ -405,6 +407,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_142549) do
   add_foreign_key "schedule_sessions", "schedule_plans"
   add_foreign_key "schedule_sessions", "students"
   add_foreign_key "schedule_sessions", "trainers"
+  add_foreign_key "schedule_sessions", "workout_check_ins"
   add_foreign_key "schedule_sessions", "workouts"
   add_foreign_key "structural_assessments", "students"
   add_foreign_key "students", "trainers"

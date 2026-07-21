@@ -141,6 +141,57 @@ RSpec.describe WorkoutCheckIn do
     end
   end
 
+  describe "linking to a schedule session" do
+    let(:trainer) { create(:trainer) }
+    let(:student) { create(:student, trainer: trainer) }
+    let(:workout) { create(:workout, student: student) }
+
+    it "links to today's planned session once the check-in is completed and personal-confirmed" do
+      session = create(:schedule_session, student: student, trainer: trainer,
+                                           status: "planned", starts_at: Time.zone.now.change(hour: 7))
+      check_in = create(:workout_check_in, :personal_performed, workout: workout, status: "in_progress")
+
+      check_in.finish!
+
+      expect(session.reload.status).to eq("done")
+      expect(session.workout_check_in_id).to eq(check_in.id)
+    end
+
+    it "does not link while only the student side is confirmed" do
+      create(:schedule_session, student: student, trainer: trainer,
+                                 status: "planned", starts_at: Time.zone.now.change(hour: 7))
+      check_in = create(:workout_check_in, :student_performed, workout: workout, status: "in_progress")
+
+      check_in.finish!
+
+      expect(ScheduleSession.where.not(workout_check_in_id: nil)).to be_empty
+    end
+
+    it "links once the personal explicitly confirms after the student already finished it" do
+      session = create(:schedule_session, student: student, trainer: trainer,
+                                           status: "planned", starts_at: Time.zone.now.change(hour: 7))
+      check_in = create(:workout_check_in, :completed, :student_performed, workout: workout)
+
+      check_in.confirm_as_personal!
+
+      expect(session.reload.status).to eq("done")
+      expect(session.workout_check_in_id).to eq(check_in.id)
+    end
+
+    it "does not re-trigger or duplicate the link on an unrelated later update (e.g. PSE)" do
+      session = create(:schedule_session, student: student, trainer: trainer,
+                                           status: "planned", starts_at: Time.zone.now.change(hour: 7))
+      check_in = create(:workout_check_in, :personal_performed, workout: workout, status: "in_progress")
+      check_in.finish!
+      linked_at = session.reload.updated_at
+
+      check_in.update!(pse: 8)
+
+      expect(session.reload.updated_at).to eq(linked_at)
+      expect(ScheduleSession.count).to eq(1)
+    end
+  end
+
   describe "#mark_viewed!" do
     it "stamps viewed_at when not yet viewed" do
       check_in = create(:workout_check_in, :completed)

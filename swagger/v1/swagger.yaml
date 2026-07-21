@@ -3230,6 +3230,7 @@ components:
         duration_minutes: { type: integer }
         status: { $ref: "#/components/schemas/ScheduleSessionStatus" }
         workout_id: { type: string, nullable: true }
+        workout_check_in_id: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         plan_id:
           type: string

@@ -17,6 +17,7 @@ class ScheduleSessionSerializer
       duration_minutes: @session.duration_minutes,
       status: @session.status,
       workout_id: @session.workout_id&.to_s,
+      workout_check_in_id: @session.workout_check_in_id&.to_s,
       notes: @session.notes,
       plan_id: @session.schedule_plan_id&.to_s
     }

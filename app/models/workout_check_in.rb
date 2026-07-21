@@ -5,9 +5,12 @@ class WorkoutCheckIn < ApplicationRecord
   belongs_to :student
   has_many :exercise_check_ins, dependent: :destroy
   has_many :check_in_feedbacks, dependent: :destroy
+  has_one :schedule_session, dependent: :nullify
 
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :pse, inclusion: { in: 1..10 }, allow_nil: true
+
+  after_save :link_to_schedule_session, if: :ready_for_schedule_link?
 
   scope :in_progress, -> { where(status: "in_progress") }
   scope :completed, -> { where(status: "completed") }
@@ -51,5 +54,20 @@ class WorkoutCheckIn < ApplicationRecord
 
   def confirm_as_personal!
     update!(personal_confirmed_at: Time.current) if personal_confirmed_at.nil?
+  end
+
+  private
+
+  # "Confirmado pelo personal" (independente de quem performou o check-in)
+  # é o gatilho pra vincular esse treino à agenda — ver
+  # ScheduleSessionLinkerService. Guardado por saved_change_to_*? pra não
+  # disparar em saves não relacionados (ex.: update_pse, mark_viewed!).
+  def ready_for_schedule_link?
+    (saved_change_to_status? || saved_change_to_personal_confirmed_at?) &&
+      status == "completed" && personal_confirmed_at.present?
+  end
+
+  def link_to_schedule_session
+    ScheduleSessionLinkerService.call(self)
   end
 end
