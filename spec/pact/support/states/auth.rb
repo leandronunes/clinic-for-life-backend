@@ -6,6 +6,8 @@ module PactStates
     NEW_EMAIL = "pact.newaccount@forlife.app".freeze
     GOOGLE_LINKED_EMAIL = "pact.google.linked@forlife.app".freeze
     GOOGLE_NEW_EMAIL = "pact.google.new@forlife.app".freeze
+    FORGOT_PASSWORD_EMAIL = "pact.forgot@forlife.app".freeze
+    RESET_PASSWORD_RAW_TOKEN = "pact-reset-token-0123456789abcdef".freeze
 
     def self.definitions
       proc do
@@ -63,6 +65,26 @@ module PactStates
             clean_database!
             PactStateContext.as(FactoryBot.create(:user, :admin))
           end
+        end
+
+        provider_state "a user with email #{FORGOT_PASSWORD_EMAIL} exists to request a password reset" do
+          set_up do
+            clean_database!
+            FactoryBot.create(:user, email: FORGOT_PASSWORD_EMAIL)
+          end
+        end
+
+        provider_state "a user has a valid password reset token" do
+          set_up do
+            clean_database!
+            FactoryBot.create(:user, email: FORGOT_PASSWORD_EMAIL,
+                                     reset_password_token_digest: Digest::SHA256.hexdigest(RESET_PASSWORD_RAW_TOKEN),
+                                     reset_password_sent_at: Time.current)
+          end
+        end
+
+        provider_state "no password reset token is valid" do
+          set_up { clean_database! }
         end
       end
     end

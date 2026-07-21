@@ -383,4 +383,146 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "POST /api/v1/auth/password/forgot" do
+    it "generates a reset token and delivers the mailer for a matching e-mail" do
+      user = create(:user, :admin, email: "forgot@forlife.app")
+
+      expect do
+        post "/api/v1/auth/password/forgot", params: { email: "forgot@forlife.app" }
+      end.to have_enqueued_mail(PasswordResetMailer, :reset_instructions)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["message"]).to be_present
+      expect(user.reload.reset_password_token_digest).to be_present
+    end
+
+    it "is case-insensitive on the email" do
+      create(:user, :admin, email: "forgot@forlife.app")
+
+      expect do
+        post "/api/v1/auth/password/forgot", params: { email: "FORGOT@forlife.app" }
+      end.to have_enqueued_mail(PasswordResetMailer, :reset_instructions)
+    end
+
+    it "responds with the same generic message for an unknown e-mail, without sending anything" do
+      expect do
+        post "/api/v1/auth/password/forgot", params: { email: "ghost@forlife.app" }
+      end.not_to have_enqueued_mail(PasswordResetMailer, :reset_instructions)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["message"]).to be_present
+    end
+
+    it "does not reveal whether the e-mail exists — both responses are identical" do
+      create(:user, :admin, email: "forgot@forlife.app")
+
+      post "/api/v1/auth/password/forgot", params: { email: "forgot@forlife.app" }
+      known_message = json_body["data"]["message"]
+
+      post "/api/v1/auth/password/forgot", params: { email: "ghost@forlife.app" }
+      unknown_message = json_body["data"]["message"]
+
+      expect(known_message).to eq(unknown_message)
+    end
+
+    it "records an audit log only when the e-mail matches an account" do
+      create(:user, :admin, email: "forgot@forlife.app")
+
+      expect do
+        post "/api/v1/auth/password/forgot", params: { email: "forgot@forlife.app" }
+      end.to change(AuditLog, :count).by(1)
+
+      expect do
+        post "/api/v1/auth/password/forgot", params: { email: "ghost@forlife.app" }
+      end.not_to change(AuditLog, :count)
+    end
+
+    it "overwrites a previous token when requested again" do
+      user = create(:user, :admin, email: "forgot@forlife.app")
+
+      post "/api/v1/auth/password/forgot", params: { email: "forgot@forlife.app" }
+      first_digest = user.reload.reset_password_token_digest
+
+      post "/api/v1/auth/password/forgot", params: { email: "forgot@forlife.app" }
+      second_digest = user.reload.reset_password_token_digest
+
+      expect(second_digest).not_to eq(first_digest)
+    end
+  end
+
+  describe "POST /api/v1/auth/password/reset" do
+    let(:user) { create(:user, :admin, email: "reset@forlife.app", password: "Old@Str0ngPass") }
+
+    it "resets the password and signs the user in with a valid token" do
+      raw_token = user.generate_password_reset_token!
+
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "N3w@Str0ngPass", password_confirmation: "N3w@Str0ngPass" }
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["token"]).to be_present
+      expect(json_body["data"]["user"]["email"]).to eq("reset@forlife.app")
+      expect(user.reload.authenticate("N3w@Str0ngPass")).to be_truthy
+    end
+
+    it "clears the reset token after a successful reset" do
+      raw_token = user.generate_password_reset_token!
+
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "N3w@Str0ngPass", password_confirmation: "N3w@Str0ngPass" }
+
+      expect(user.reload.reset_password_token_digest).to be_nil
+    end
+
+    it "rejects a token that does not exist" do
+      post "/api/v1/auth/password/reset",
+           params: { token: "not-a-real-token", password: "N3w@Str0ngPass",
+                      password_confirmation: "N3w@Str0ngPass" }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_body["error"]).to be_present
+    end
+
+    it "rejects an expired token" do
+      raw_token = user.generate_password_reset_token!
+      user.update_column(:reset_password_sent_at, 31.minutes.ago)
+
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "N3w@Str0ngPass", password_confirmation: "N3w@Str0ngPass" }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.authenticate("N3w@Str0ngPass")).to be_falsy
+    end
+
+    it "rejects a weak new password, keeping the token valid for a retry" do
+      raw_token = user.generate_password_reset_token!
+
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "weak", password_confirmation: "weak" }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.reset_password_token_digest).to be_present
+    end
+
+    it "cannot be reused after a successful reset" do
+      raw_token = user.generate_password_reset_token!
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "N3w@Str0ngPass", password_confirmation: "N3w@Str0ngPass" }
+
+      post "/api/v1/auth/password/reset",
+           params: { token: raw_token, password: "An0ther@Pass", password_confirmation: "An0ther@Pass" }
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "records an audit log on success" do
+      raw_token = user.generate_password_reset_token!
+
+      expect do
+        post "/api/v1/auth/password/reset",
+             params: { token: raw_token, password: "N3w@Str0ngPass", password_confirmation: "N3w@Str0ngPass" }
+      end.to change(AuditLog, :count).by(1)
+    end
+  end
 end

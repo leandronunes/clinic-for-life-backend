@@ -2,6 +2,7 @@ class User < ApplicationRecord
   has_secure_password
 
   ROLES = %w[admin personal student].freeze
+  RESET_TOKEN_EXPIRY = 30.minutes
 
   belongs_to :trainer, optional: true
   belongs_to :student, optional: true
@@ -19,6 +20,36 @@ class User < ApplicationRecord
 
   ROLES.each do |role_name|
     define_method("#{role_name}?") { role == role_name }
+  end
+
+  # Looks up a user by a raw password-reset token (as received from the
+  # reset link), rejecting it if it's unknown or older than
+  # RESET_TOKEN_EXPIRY. Only the digest is ever persisted (see
+  # #generate_password_reset_token!), so lookup hashes the raw token the
+  # same way before querying.
+  def self.find_by_valid_reset_token(raw_token)
+    return nil if raw_token.blank?
+
+    user = find_by(reset_password_token_digest: Digest::SHA256.hexdigest(raw_token))
+    return nil if user.nil?
+    return nil if user.reset_password_sent_at.nil?
+    return nil if user.reset_password_sent_at < RESET_TOKEN_EXPIRY.ago
+
+    user
+  end
+
+  # Generates a fresh raw token, persists only its digest, and returns the
+  # raw token so the caller can e-mail it — it is never stored or logged.
+  # Overwrites any previous token (so requesting a new link invalidates
+  # earlier ones).
+  def generate_password_reset_token!
+    raw_token = SecureRandom.urlsafe_base64(32)
+    update!(reset_password_token_digest: Digest::SHA256.hexdigest(raw_token), reset_password_sent_at: Time.current)
+    raw_token
+  end
+
+  def clear_password_reset_token!
+    update!(reset_password_token_digest: nil, reset_password_sent_at: nil)
   end
 
   private
