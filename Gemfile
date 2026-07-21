@@ -40,6 +40,9 @@ gem "rack-attack"
 # AWS S3 — presigned URL generation for direct video uploads
 gem "aws-sdk-s3", "~> 1.170", require: false
 
+# ActionMailer delivery via AWS SES — reuses the same AWS credentials as aws-sdk-s3
+gem "aws-actionmailer-ses", "~> 1.2"
+
 # Serves the static OpenAPI document and an interactive Swagger UI at /api-docs
 gem "rswag-api"
 gem "rswag-ui"

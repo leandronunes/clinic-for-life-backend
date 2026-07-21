@@ -1,7 +1,9 @@
 module Api
   module V1
     class AuthController < BaseController
-      skip_before_action :authenticate_request!, only: %i[login register google_auth]
+      skip_before_action :authenticate_request!, only: %i[login register google_auth forgot_password reset_password]
+
+      FORGOT_PASSWORD_MESSAGE = "Se o e-mail existir, enviaremos um link de redefinição.".freeze
 
       # POST /api/v1/auth/login
       def login
@@ -114,6 +116,35 @@ module Api
         )
         audit!("user.change_password", record: current_user)
         render_data({ message: "Senha atualizada com sucesso" })
+      end
+
+      # POST /api/v1/auth/password/forgot
+      # Always responds with the same generic message regardless of whether
+      # the e-mail matches an account — revealing that would let an attacker
+      # enumerate registered e-mails. Only sends anything when a match exists.
+      def forgot_password
+        user = User.find_by("lower(email) = ?", params[:email].to_s.downcase.strip)
+        if user
+          raw_token = user.generate_password_reset_token!
+          PasswordResetMailer.reset_instructions(user, raw_token).deliver_later
+          audit!("user.password_reset_requested", record: user)
+        end
+
+        render_data({ message: FORGOT_PASSWORD_MESSAGE })
+      end
+
+      # POST /api/v1/auth/password/reset
+      def reset_password
+        user = User.find_by_valid_reset_token(params[:token])
+        return render json: { error: "Link inválido ou expirado" }, status: :unprocessable_content if user.nil?
+
+        if user.update(password: params[:password], password_confirmation: params[:password_confirmation])
+          user.clear_password_reset_token!
+          audit!("user.password_reset", record: user)
+          render_data(session_payload(user))
+        else
+          render json: { error: user.errors.full_messages }, status: :unprocessable_content
+        end
       end
 
       private

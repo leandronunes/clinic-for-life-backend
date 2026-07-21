@@ -19,6 +19,8 @@ Rails.application.routes.draw do
       get   "auth/me",      to: "auth#me"
       patch "auth/me",      to: "auth#update_me"
       patch "auth/password", to: "auth#update_password"
+      post "auth/password/forgot", to: "auth#forgot_password"
+      post "auth/password/reset",  to: "auth#reset_password"
 
       # Dashboard
       get "dashboard/kpis",       to: "dashboard#kpis"

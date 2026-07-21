@@ -264,6 +264,81 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /api/v1/auth/password/forgot:
+    post:
+      tags: [Auth]
+      summary: Solicita um link de redefinição de senha por e-mail
+      operationId: forgotPassword
+      description: >-
+        Sempre responde com a mesma mensagem genérica, exista ou não uma
+        conta com o e-mail informado — evita revelar quais e-mails estão
+        cadastrados. Só envia um e-mail (com um link válido por 30 minutos)
+        quando a conta existe. Limitado a 5 requisições por minuto por IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Pedido registrado (mensagem genérica, independe do e-mail existir)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+        "429":
+          description: Muitas requisições — limite de taxa excedido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: Redefine a senha a partir de um token de recuperação
+      operationId: resetPassword
+      description: >-
+        Recebe o token bruto enviado por e-mail (ver
+        `/auth/password/forgot`). Em caso de sucesso, invalida o token e
+        autentica o usuário automaticamente (mesmo formato de resposta de
+        `/auth/login`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password, password_confirmation]
+              properties:
+                token: { type: string }
+                password: { type: string, format: password }
+                password_confirmation: { type: string, format: password }
+      responses:
+        "200":
+          description: Senha redefinida com sucesso — usuário autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SessionPayload" }
+        "422":
+          description: Token inválido/expirado, ou nova senha não atende aos requisitos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/dashboard/kpis:
     get:
       tags: [Dashboard]

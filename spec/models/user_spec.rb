@@ -77,4 +77,65 @@ RSpec.describe User, type: :model do
       expect(build(:user, :admin)).not_to be_student
     end
   end
+
+  describe "#generate_password_reset_token!" do
+    it "returns a raw token and persists only its digest" do
+      user = create(:user)
+      raw_token = user.generate_password_reset_token!
+
+      expect(raw_token).to be_present
+      expect(user.reset_password_token_digest).to eq(Digest::SHA256.hexdigest(raw_token))
+      expect(user.reset_password_token_digest).not_to eq(raw_token)
+    end
+
+    it "sets reset_password_sent_at to now" do
+      user = create(:user)
+      user.generate_password_reset_token!
+      expect(user.reset_password_sent_at).to be_within(2.seconds).of(Time.current)
+    end
+
+    it "returns a different token each time it is called" do
+      user = create(:user)
+      first = user.generate_password_reset_token!
+      second = user.generate_password_reset_token!
+      expect(first).not_to eq(second)
+    end
+  end
+
+  describe ".find_by_valid_reset_token" do
+    it "finds the user by the raw token" do
+      user = create(:user)
+      raw_token = user.generate_password_reset_token!
+      expect(User.find_by_valid_reset_token(raw_token)).to eq(user)
+    end
+
+    it "returns nil for an unknown token" do
+      expect(User.find_by_valid_reset_token("does-not-exist")).to be_nil
+    end
+
+    it "returns nil for a blank token" do
+      expect(User.find_by_valid_reset_token(nil)).to be_nil
+      expect(User.find_by_valid_reset_token("")).to be_nil
+    end
+
+    it "returns nil once the token has expired" do
+      user = create(:user)
+      raw_token = user.generate_password_reset_token!
+      user.update_column(:reset_password_sent_at, User::RESET_TOKEN_EXPIRY.ago - 1.second)
+
+      expect(User.find_by_valid_reset_token(raw_token)).to be_nil
+    end
+  end
+
+  describe "#clear_password_reset_token!" do
+    it "clears both the digest and the timestamp" do
+      user = create(:user)
+      user.generate_password_reset_token!
+
+      user.clear_password_reset_token!
+
+      expect(user.reset_password_token_digest).to be_nil
+      expect(user.reset_password_sent_at).to be_nil
+    end
+  end
 end
