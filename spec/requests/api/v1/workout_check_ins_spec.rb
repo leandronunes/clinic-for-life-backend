@@ -178,6 +178,25 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
         hash_including(url: "/alunos/#{student.id}")
       )
     end
+
+    it "links today's planned schedule session as done once the personal-performed check-in finishes" do
+      today = Time.zone.now
+      create(:schedule_session, student: student, trainer: trainer,
+                                 status: "planned", starts_at: today.change(hour: 7))
+      check_in = create(:workout_check_in, workout: workout, student: student,
+                                            personal_confirmed_at: Time.current)
+
+      post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/finish",
+           headers: auth_headers(trainer_user)
+
+      expect(response).to have_http_status(:ok)
+      get "/api/v1/schedule_sessions",
+          params: { from: today.to_date.to_s, to: today.to_date.to_s },
+          headers: auth_headers(trainer_user)
+      session_json = json_body["data"].first
+      expect(session_json["status"]).to eq("done")
+      expect(session_json["workout_check_in_id"]).to eq(check_in.id.to_s)
+    end
   end
 
   describe "POST /api/v1/students/:student_id/workouts/:workout_id/check_ins/:id/view" do
