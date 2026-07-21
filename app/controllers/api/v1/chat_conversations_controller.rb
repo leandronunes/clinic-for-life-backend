@@ -7,15 +7,20 @@ module Api
         messages_by_student = ChatMessage.where(student_id: students.map(&:id)).group_by(&:student_id)
         viewer_role = current_user.chat_role
 
+        # Sort on the raw Time (microsecond precision) rather than the
+        # serialized ISO8601 string (whole-second precision) — two
+        # conversations updated within the same second would tie as
+        # strings, and .reverse on a tied, stable sort silently swaps
+        # their relative order.
         conversations = students.map do |student|
-          ChatConversationSerializer.new(
-            student,
-            messages: messages_by_student[student.id] || [],
-            viewer_role: viewer_role
-          ).as_json
+          messages = messages_by_student[student.id] || []
+          {
+            updated_at: messages.max_by(&:created_at)&.created_at || student.created_at,
+            json: ChatConversationSerializer.new(student, messages: messages, viewer_role: viewer_role).as_json
+          }
         end
 
-        render_data(conversations.sort_by { |c| c[:updated_at] }.reverse)
+        render_data(conversations.sort_by { |c| c[:updated_at] }.reverse.map { |c| c[:json] })
       end
 
       private

@@ -73,6 +73,23 @@ RSpec.describe "Api::V1::ChatConversations", type: :request do
       expect(ids.index(student.id.to_s)).to be < ids.index(older_student.id.to_s)
     end
 
+    it "keeps the correct order even when two conversations tie to the same second" do
+      # created_at only has whole-second precision once serialized via
+      # .iso8601 — sorting on that string (instead of the raw Time) would
+      # silently swap these two whenever they land in the same second.
+      # `student` (id created first, so it comes first out of the DB query
+      # too) must be the one with a message, so a buggy string-sort's stable
+      # tie-then-reverse would incorrectly push it to the end.
+      same_second = Time.current.change(usec: 0)
+      create(:chat_message, :from_aluno, student: student, created_at: same_second + 0.5)
+      no_message_student = create(:student, trainer: trainer, created_at: same_second)
+
+      get "/api/v1/chat/conversations", headers: auth_headers(personal)
+
+      ids = json_body["data"].map { |c| c["student_id"] }
+      expect(ids.index(student.id.to_s)).to be < ids.index(no_message_student.id.to_s)
+    end
+
     it "includes the sender_name on the last_message" do
       create(:chat_message, :from_personal, student: student, sender: personal, body: "Oi!")
 
