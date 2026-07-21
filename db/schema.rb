@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_101842) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_142549) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -105,6 +105,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_101842) do
     t.datetime "updated_at", null: false
     t.index ["biomechanical_assessment_id", "slot"], name: "index_biomechanical_images_on_assessment_and_slot", unique: true
     t.index ["biomechanical_assessment_id"], name: "index_biomechanical_images_on_biomechanical_assessment_id"
+  end
+
+  create_table "chat_messages", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "read_at"
+    t.bigint "sender_id", null: false
+    t.string "sender_role", null: false
+    t.bigint "student_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sender_id"], name: "index_chat_messages_on_sender_id"
+    t.index ["student_id", "created_at"], name: "index_chat_messages_on_student_id_and_created_at"
+    t.index ["student_id", "read_at"], name: "index_chat_messages_on_student_id_and_read_at"
+    t.index ["student_id"], name: "index_chat_messages_on_student_id"
   end
 
   create_table "check_in_feedbacks", force: :cascade do |t|
@@ -373,6 +387,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_101842) do
   add_foreign_key "bioimpedance_measurements", "students"
   add_foreign_key "biomechanical_assessments", "students"
   add_foreign_key "biomechanical_images", "biomechanical_assessments"
+  add_foreign_key "chat_messages", "students"
+  add_foreign_key "chat_messages", "users", column: "sender_id"
   add_foreign_key "check_in_feedbacks", "users", column: "author_id"
   add_foreign_key "check_in_feedbacks", "workout_check_ins"
   add_foreign_key "evolution_photos", "bioimpedance_measurements"

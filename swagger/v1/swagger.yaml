@@ -2564,6 +2564,118 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/chat/conversations:
+    get:
+      tags: [Chat]
+      summary: Lista as conversas visíveis para o usuário atual
+      operationId: listChatConversations
+      description: >-
+        Conversa 1:1 identificada pelo student_id. aluno vê no máximo a
+        própria conversa; personal vê uma entrada por aluno ativo sob sua
+        responsabilidade (mesmo sem mensagens ainda); admin vê todas.
+        Ordenadas pela mensagem mais recente primeiro.
+      responses:
+        "200":
+          description: Lista de conversas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChatConversation" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/chat/conversations/{student_id}/messages:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    get:
+      tags: [Chat]
+      summary: Lista o histórico de mensagens da conversa, do mais antigo pro mais novo
+      operationId: listChatMessages
+      responses:
+        "200":
+          description: Lista de mensagens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChatMessage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Chat]
+      summary: Envia uma mensagem na conversa
+      operationId: createChatMessage
+      description: >-
+        sender_id/sender_role são sempre derivados do usuário autenticado —
+        qualquer valor enviado pelo cliente para esses campos é ignorado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 4000 }
+      responses:
+        "201":
+          description: Mensagem criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ChatMessage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/chat/conversations/{student_id}/read:
+    parameters:
+      - $ref: "#/components/parameters/StudentIdParam"
+    post:
+      tags: [Chat]
+      summary: Marca como lidas as mensagens do outro lado da conversa
+      operationId: markChatConversationRead
+      description: >-
+        Sempre responde 200, mesmo quando não havia nada pendente — o
+        cliente chama de forma best-effort sempre que abre/atualiza a
+        conversa.
+      responses:
+        "200":
+          description: Contagem de mensagens marcadas como lidas nesta chamada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      read: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3228,6 +3340,34 @@ components:
           properties:
             p256dh: { type: string }
             auth: { type: string }
+
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        sender_role: { type: string, enum: [personal, aluno] }
+        sender_id: { type: string }
+        sender_name: { type: string }
+        body: { type: string }
+        created_at: { type: string, format: date-time }
+        read_at: { type: string, format: date-time, nullable: true }
+
+    ChatConversation:
+      type: object
+      properties:
+        student_id: { type: string }
+        student_name: { type: string }
+        student_avatar_url: { type: string, format: uri, nullable: true }
+        trainer_id: { type: string }
+        trainer_name: { type: string }
+        last_message:
+          type: object
+          nullable: true
+          allOf:
+            - { $ref: "#/components/schemas/ChatMessage" }
+        unread_count: { type: integer }
+        updated_at: { type: string, format: date-time }
 
     DashboardKpiCard:
       type: object

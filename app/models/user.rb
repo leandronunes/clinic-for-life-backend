@@ -52,6 +52,12 @@ class User < ApplicationRecord
     update!(reset_password_token_digest: nil, reset_password_sent_at: nil)
   end
 
+  # Which side of a 1:1 chat this user represents. Admins act as staff here
+  # too — same as everywhere else they can view/act on behalf of a personal.
+  def chat_role
+    student? ? "aluno" : "personal"
+  end
+
   private
 
   # Strong password policy: min 8 chars, upper, lower, digit and special char.
