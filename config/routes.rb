@@ -122,6 +122,12 @@ Rails.application.routes.draw do
       # Push notifications — browser subscriptions, scoped to the current user
       post   "push_subscriptions", to: "push_subscriptions#create"
       delete "push_subscriptions", to: "push_subscriptions#destroy"
+
+      # Chat 1:1 (personal <-> aluno) — conversation identified by student_id.
+      get  "chat/conversations",                       to: "chat_conversations#index"
+      get  "chat/conversations/:student_id/messages",  to: "chat_messages#index"
+      post "chat/conversations/:student_id/messages",  to: "chat_messages#create"
+      post "chat/conversations/:student_id/read",      to: "chat_messages#read"
     end
   end
 end
