@@ -12,9 +12,9 @@ module Api
           { label: "Alunos Ativos", value: scope.where(status: "active").count,
             icon: "users",     delta: delta_pct(scope, days) },
           { label: "Personais",        value: trainer_scope.count,
-            icon: "trainer",   delta: delta_pct(Trainer, days) },
-          { label: "Parceiros",        value: Partner.count,
-            icon: "handshake", delta: delta_pct(Partner, days) },
+            icon: "trainer",   delta: delta_pct(trainer_scope, days) },
+          { label: "Parceiros",        value: partner_scope.count,
+            icon: "handshake", delta: delta_pct(partner_scope, days) },
           { label: "Avaliações",     value: assessment_count(scope),
             icon: "clipboard", delta: assessment_delta(scope, days) },
           { label: "Treinos Ativos", value: Workout.active.where(student: scope).count,
@@ -87,18 +87,6 @@ module Api
         return 0.0 if prev.zero?
 
         ((curr - prev) / prev.to_f * 100).round(1)
-      end
-
-      def trainer_scope
-        return Trainer.where(id: current_user.trainer_id) if current_user.personal?
-
-        Trainer.all
-      end
-
-      def student_scope
-        return Student.where(trainer_id: current_user.trainer_id) if current_user.personal?
-
-        Student.all
       end
 
       def assessment_count(scope)

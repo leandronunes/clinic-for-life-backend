@@ -15,7 +15,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: RENEW_ID, trainer: trainer,
                                         contracted_workouts_per_cycle: 8, cycle_started_at: 2.months.ago)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -25,7 +25,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: RENEW_NO_CONTRACT_ID, trainer: trainer,
                                         contracted_workouts_per_cycle: nil)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -50,7 +50,7 @@ module PactStates
                                                   started_at: 2.months.ago, ended_at: 1.month.ago)
             FactoryBot.create(:workout_check_in, :completed, workout: workout, student: student,
                                                   completed_at: 6.weeks.ago)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -59,7 +59,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: HISTORY_EMPTY_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 

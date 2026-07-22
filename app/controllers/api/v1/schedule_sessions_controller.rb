@@ -48,12 +48,14 @@ module Api
       end
 
       # Personal só vê seu próprio portfólio; aluno só a própria agenda;
-      # admin vê tudo (e pode filtrar por trainer_id/student_id via query).
+      # admin vê tudo dentro da própria organização (e pode filtrar por
+      # trainer_id/student_id via query). ScheduleSession não tem coluna
+      # organization_id própria — resolve via trainer_scope (subquery).
       def session_scope
         return ScheduleSession.where(trainer_id: current_user.trainer_id) if current_user.personal?
         return ScheduleSession.where(student_id: current_user.student_id) if current_user.student?
 
-        ScheduleSession.all
+        ScheduleSession.where(trainer_id: trainer_scope)
       end
 
       def allow_trainer_filter?

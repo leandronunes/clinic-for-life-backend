@@ -3,6 +3,7 @@ module Api
     class BaseController < ApplicationController
       include Authenticable
       include Authorizable
+      include OrganizationScoped
       include Auditable
 
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found

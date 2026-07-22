@@ -78,7 +78,7 @@ RSpec.describe "Api::V1::Workouts", type: :request do
     end
 
     it "mentions the student's current trainer even when a different role creates the workout" do
-      admin = create(:user, :admin)
+      admin = create(:user, :admin, organization: trainer.organization)
       student_user
       params = { title: "Push Day", focus: "Push", status: "active" }
       expect do
@@ -90,8 +90,8 @@ RSpec.describe "Api::V1::Workouts", type: :request do
     end
 
     it "falls back to a generic message when the student has no trainer" do
-      admin = create(:user, :admin)
       untrained_student = create(:student, trainer: nil)
+      admin = create(:user, :admin, organization: untrained_student.organization)
       untrained_user = create(:user, :student_account, student: untrained_student)
       params = { title: "Push Day", focus: "Push", status: "active" }
       expect do

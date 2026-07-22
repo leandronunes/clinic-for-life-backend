@@ -7,7 +7,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, trainer: trainer, status: "active")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
       end

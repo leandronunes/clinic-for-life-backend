@@ -10,14 +10,6 @@ module Api
                                    .order(completed_at: :desc)
         render_data(check_ins.map { |c| WorkoutCheckInSerializer.new(c).as_json })
       end
-
-      private
-
-      def student_scope
-        return Student.where(trainer_id: current_user.trainer_id) if current_user.personal?
-
-        Student.all
-      end
     end
   end
 end

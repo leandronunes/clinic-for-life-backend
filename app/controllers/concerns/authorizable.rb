@@ -14,10 +14,11 @@ module Authorizable
     render json: { error: "Forbidden" }, status: :forbidden
   end
 
-  # Trainers may only reach students from their own portfolio; admins see all;
-  # students may only reach their own record.
+  # Trainers may only reach students from their own portfolio; admins see
+  # every student within their own organization; students may only reach
+  # their own record.
   def authorize_student!(student)
-    return if current_user&.admin?
+    return if current_user&.admin? && student.organization_id == current_user.organization_id
     return if current_user&.personal? && student.trainer_id == current_user.trainer_id
     return if current_user&.student? && student.id == current_user.student_id
 
@@ -28,7 +29,7 @@ module Authorizable
   # attendance cycle) where the student themselves must be excluded even
   # though they're allowed to read/update their own profile elsewhere.
   def authorize_staff_for_student!(student)
-    return if current_user&.admin?
+    return if current_user&.admin? && student.organization_id == current_user.organization_id
     return if current_user&.personal? && student.trainer_id == current_user.trainer_id
 
     render json: { error: "Forbidden" }, status: :forbidden

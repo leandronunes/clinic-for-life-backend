@@ -2,15 +2,22 @@ require "rails_helper"
 
 RSpec.describe "Api::V1::Students", type: :request do
   let(:trainer) { create(:trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
 
   describe "GET /api/v1/students" do
     it "lists all students for an admin" do
-      create_list(:student, 3)
+      create_list(:student, 3, trainer: create(:trainer, organization: admin.organization))
       get "/api/v1/students", headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)
       expect(json_body["meta"]["total"]).to eq(3)
+    end
+
+    it "does not include students from another organization" do
+      create(:student, trainer: create(:trainer, organization: admin.organization))
+      create(:student) # different organization entirely
+      get "/api/v1/students", headers: auth_headers(admin)
+      expect(json_body["meta"]["total"]).to eq(1)
     end
 
     it "scopes the list to the personal's portfolio" do
@@ -28,8 +35,9 @@ RSpec.describe "Api::V1::Students", type: :request do
     end
 
     it "filters by query" do
-      create(:student, name: "Julia Ferreira")
-      create(:student, name: "Pedro")
+      org = admin.organization
+      create(:student, name: "Julia Ferreira", trainer: create(:trainer, organization: org))
+      create(:student, name: "Pedro", trainer: create(:trainer, organization: org))
       get "/api/v1/students", params: { query: "julia" }, headers: auth_headers(admin)
       expect(json_body["data"].map { |s| s["name"] }).to include("Julia Ferreira")
     end
@@ -281,7 +289,7 @@ RSpec.describe "Api::V1::Students", type: :request do
 
   describe "DELETE /api/v1/students/:id" do
     it "destroys the student as admin and returns 204" do
-      student = create(:student)
+      student = create(:student, trainer: create(:trainer, organization: admin.organization))
       expect do
         delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
       end.to change(Student, :count).by(-1)
@@ -289,7 +297,7 @@ RSpec.describe "Api::V1::Students", type: :request do
     end
 
     it "records an audit log on deletion" do
-      student = create(:student)
+      student = create(:student, trainer: create(:trainer, organization: admin.organization))
       expect do
         delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
       end.to change(AuditLog, :count).by(1)
@@ -308,8 +316,15 @@ RSpec.describe "Api::V1::Students", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    it "forbids an admin from deleting a student in another organization" do
+      other_org_student = create(:student)
+      delete "/api/v1/students/#{other_org_student.id}", headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
+      expect(Student.exists?(other_org_student.id)).to be true
+    end
+
     it "cascades deletion to associated exams" do
-      student = create(:student)
+      student = create(:student, trainer: create(:trainer, organization: admin.organization))
       create(:exam, student: student)
       expect do
         delete "/api/v1/students/#{student.id}", headers: auth_headers(admin)
@@ -317,7 +332,7 @@ RSpec.describe "Api::V1::Students", type: :request do
     end
 
     it "deletes the student even when bioimpedance measurements have linked evolution photos" do
-      student = create(:student)
+      student = create(:student, trainer: create(:trainer, organization: admin.organization))
       measurement = create(:bioimpedance_measurement, student: student)
       create(:evolution_photo, student: student, bioimpedance_measurement: measurement)
 

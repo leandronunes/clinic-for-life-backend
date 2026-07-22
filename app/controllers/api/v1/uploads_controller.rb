@@ -47,7 +47,7 @@ module Api
         @student = Student.find_by(id: presign_params[:student_id])
         return render json: { error: "Student not found" }, status: :not_found unless @student
 
-        return if current_user&.admin?
+        return if current_user&.admin? && @student.organization_id == current_user.organization_id
         return if current_user&.personal? && @student.trainer_id == current_user.trainer_id
         return if current_user&.student? &&
                   @student.id == current_user.student_id &&

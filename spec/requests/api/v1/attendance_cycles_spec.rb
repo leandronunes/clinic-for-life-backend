@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Api::V1::AttendanceCycles", type: :request do
   let(:trainer) { create(:trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
 
   describe "GET /api/v1/students/:student_id/attendance_cycles" do

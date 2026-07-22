@@ -13,7 +13,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:bioimpedance_measurement, id: MEASUREMENT_ID, student: student,
                                                           measured_on: Date.new(2025, 1, 1))
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -22,7 +22,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -32,7 +32,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:bioimpedance_measurement, id: DELETE_MEASUREMENT_ID, student: student)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -41,7 +41,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
       end

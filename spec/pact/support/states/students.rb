@@ -13,7 +13,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create_list(:student, 2, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -30,7 +30,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, trainer: trainer, status: "active")
             FactoryBot.create(:student, trainer: trainer, status: "inactive")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -40,7 +40,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: PactStates::Students::SHOW_ID, trainer: trainer,
                                         health_plan: nil, emergency_contact: nil)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -91,7 +91,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: PactStates::Students::UPDATE_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -100,7 +100,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: PactStates::Students::DELETE_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
       end

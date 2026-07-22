@@ -5,7 +5,7 @@ RSpec.describe "Api::V1::CheckIns", type: :request do
   let(:personal) { create(:user, :personal, trainer: trainer) }
   let(:student) { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
 
   describe "GET /api/v1/students/:student_id/check_ins" do
     it "lists the student's check-ins across every workout, most recent first" do

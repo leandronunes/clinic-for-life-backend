@@ -51,6 +51,9 @@ module Api
 
       # DELETE /api/v1/students/:id
       def destroy
+        authorize_organization!(@student)
+        return if performed?
+
         audit!("student.destroy", record: @student)
         @student.destroy!
         head :no_content
@@ -91,13 +94,6 @@ module Api
 
       def set_student
         @student = Student.find(params[:id])
-      end
-
-      def student_scope
-        return Student.where(trainer_id: current_user.trainer_id) if current_user.personal?
-        return Student.where(id: current_user.student_id) if current_user.student?
-
-        Student.all
       end
 
       def student_params
