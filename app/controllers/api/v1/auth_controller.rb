@@ -195,7 +195,9 @@ module Api
       #   self-approved (this trainer IS its founding admin).
       # - anything else (including absent, e.g. every Google signup today):
       #   defaults to "solo" — a private organization auto-generated for
-      #   just this trainer, self-approved.
+      #   just this trainer, self-approved, and flagged `solo: true` so it's
+      #   excluded from OrganizationsController#index (the "join an existing
+      #   organization" picker) — it isn't a real organization to join.
       def build_trainer_for_registration!(name:, email:)
         case params[:trainer_mode]
         when "join"
@@ -205,7 +207,7 @@ module Api
           organization = Organization.create!(name: params[:organization_name], domain: params[:organization_domain])
           Trainer.create!(name: name, email: email, organization: organization, approved_at: Time.current)
         else
-          organization = Organization.create!(name: "#{name} (individual)", domain: SecureRandom.hex(4))
+          organization = Organization.create!(name: "#{name} (individual)", domain: SecureRandom.hex(4), solo: true)
           Trainer.create!(name: name, email: email, organization: organization, approved_at: Time.current)
         end
       end

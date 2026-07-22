@@ -27,6 +27,16 @@ RSpec.describe "Api::V1::Organizations", type: :request do
       get "/api/v1/organizations", headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)
     end
+
+    it "excludes solo organizations (auto-generated for a solo trainer, not joinable)" do
+      create(:organization, name: "Acme Clinic")
+      create(:organization, :solo, name: "Fulano de Tal (individual)")
+
+      get "/api/v1/organizations"
+
+      names = json_body["data"].map { |o| o["name"] }
+      expect(names).to eq([ "Acme Clinic" ])
+    end
   end
 
   describe "PATCH /api/v1/organizations/:id" do
