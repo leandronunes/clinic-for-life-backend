@@ -690,6 +690,68 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/organizations/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Organizations]
+      summary: Atualiza a própria organização
+      operationId: updateOrganization
+      description: >-
+        Requer papel `admin`. Só permite editar a organização à qual o
+        próprio admin pertence — nenhum papel pode editar outra organização.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationInput" }
+      responses:
+        "200":
+          description: Organização atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    put:
+      tags: [Organizations]
+      summary: Atualiza a própria organização (idêntico ao PATCH)
+      operationId: replaceOrganization
+      description: >-
+        Requer papel `admin`. Só permite editar a organização à qual o
+        próprio admin pertence — nenhum papel pode editar outra organização.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationInput" }
+      responses:
+        "200":
+          description: Organização atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
   /api/v1/trainers:
     get:
       tags: [Trainers]
@@ -2867,6 +2929,7 @@ components:
         avatar_url: { type: string, format: uri, nullable: true }
         trainer_id: { type: string, nullable: true }
         student_id: { type: string, nullable: true }
+        organization_id: { type: string, nullable: true }
         mfa_enabled: { type: boolean }
         pending_approval:
           type: boolean
@@ -2882,6 +2945,14 @@ components:
         id: { type: string }
         name: { type: string }
         domain: { type: string }
+
+    OrganizationInput:
+      type: object
+      properties:
+        name: { type: string }
+        domain:
+          type: string
+          description: Identificador cosmético (slug), ex. "clinica-vitalidade".
 
     SessionPayload:
       type: object

@@ -46,7 +46,7 @@ Rails.application.routes.draw do
 
       # Organizações — só listagem pública (seletor "entrar numa organização
       # existente" no cadastro); criação acontece dentro de auth/register.
-      resources :organizations, only: %i[index]
+      resources :organizations, only: %i[index update]
 
       # Trainers (personals)
       resources :trainers, only: %i[index show create update destroy] do
