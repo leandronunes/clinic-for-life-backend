@@ -13,7 +13,8 @@ class UserSerializer
       avatar_url: @user.avatar_url,
       trainer_id: @user.trainer_id&.to_s,
       student_id: @user.student_id&.to_s,
-      mfa_enabled: @user.mfa_enabled
+      mfa_enabled: @user.mfa_enabled,
+      pending_approval: @user.trainer.present? && @user.trainer.approved_at.nil?
     }
   end
 end

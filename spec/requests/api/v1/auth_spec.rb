@@ -161,6 +161,92 @@ RSpec.describe "Api::V1::Auth", type: :request do
         post "/api/v1/auth/register", params: valid_params
       end.to change(AuditLog, :count).by(1)
     end
+
+    describe "role: personal" do
+      it "creates a private organization and an approved trainer for trainer_mode: solo" do
+        expect do
+          post "/api/v1/auth/register",
+               params: valid_params.merge(role: "personal", trainer_mode: "solo")
+        end.to change(Organization, :count).by(1).and change(Trainer, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        user = User.find_by(email: "joao@email.com")
+        expect(json_body["data"]["user"]["role"]).to eq("personal")
+        expect(json_body["data"]["user"]["pending_approval"]).to be(false)
+        expect(user.trainer.approved_at).to be_present
+        expect(user.trainer.organization_id).to eq(user.organization_id)
+      end
+
+      it "defaults to solo when trainer_mode is absent" do
+        post "/api/v1/auth/register", params: valid_params.merge(role: "personal")
+
+        expect(response).to have_http_status(:created)
+        user = User.find_by(email: "joao@email.com")
+        expect(user.trainer.approved_at).to be_present
+      end
+
+      it "creates a brand-new organization with the given name/domain for trainer_mode: create_org" do
+        post "/api/v1/auth/register",
+             params: valid_params.merge(role: "personal", trainer_mode: "create_org",
+                                         organization_name: "Clínica Nova", organization_domain: "clinica-nova")
+
+        expect(response).to have_http_status(:created)
+        user = User.find_by(email: "joao@email.com")
+        expect(user.organization.name).to eq("Clínica Nova")
+        expect(user.organization.domain).to eq("clinica-nova")
+        expect(user.trainer.approved_at).to be_present
+      end
+
+      it "rolls back the organization when create_org data is invalid, leaving no orphaned rows" do
+        expect do
+          post "/api/v1/auth/register",
+               params: valid_params.merge(role: "personal", trainer_mode: "create_org",
+                                           organization_name: "", organization_domain: "")
+        end.not_to change(Organization, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(User.exists?(email: "joao@email.com")).to be false
+        expect(Trainer.exists?(email: "joao@email.com")).to be false
+      end
+
+      it "joins an existing organization as pending approval for trainer_mode: join" do
+        organization = create(:organization)
+
+        expect do
+          post "/api/v1/auth/register",
+               params: valid_params.merge(role: "personal", trainer_mode: "join",
+                                           organization_id: organization.id)
+        end.not_to change(Organization, :count)
+
+        expect(response).to have_http_status(:created)
+        user = User.find_by(email: "joao@email.com")
+        expect(user.organization_id).to eq(organization.id)
+        expect(user.trainer.approved_at).to be_nil
+        expect(json_body["data"]["user"]["pending_approval"]).to be(true)
+      end
+
+      it "returns 404 when joining an organization that does not exist" do
+        post "/api/v1/auth/register",
+             params: valid_params.merge(role: "personal", trainer_mode: "join", organization_id: 999_999)
+
+        expect(response).to have_http_status(:not_found)
+        expect(User.exists?(email: "joao@email.com")).to be false
+      end
+
+      it "ignores role/trainer_mode when a trainer already exists for this e-mail (legacy claim takes priority)" do
+        trainer = create(:trainer, email: "joao@email.com")
+        other_org = create(:organization)
+
+        post "/api/v1/auth/register",
+             params: valid_params.merge(role: "personal", trainer_mode: "join", organization_id: other_org.id)
+
+        expect(response).to have_http_status(:created)
+        user = User.find_by(email: "joao@email.com")
+        expect(user.trainer_id).to eq(trainer.id)
+        expect(user.organization_id).to eq(trainer.organization_id)
+        expect(user.organization_id).not_to eq(other_org.id)
+      end
+    end
   end
 
   describe "POST /api/v1/auth/google" do
