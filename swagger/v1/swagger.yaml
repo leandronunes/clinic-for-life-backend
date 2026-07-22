@@ -26,6 +26,8 @@ tags:
     description: Indicadores agregados para admin/personal
   - name: Uploads
     description: URLs pré-assinadas para upload direto no S3
+  - name: Organizations
+    description: Organizações (multi-tenant) — listagem pública usada no cadastro
   - name: Trainers
     description: Personal trainers
   - name: Students
@@ -108,10 +110,18 @@ paths:
       operationId: registerUser
       description: >-
         Associa automaticamente a conta a um Trainer ou Student existente
-        quando o e-mail informado já estiver cadastrado como personal/aluno.
-        Quando nenhum Trainer casa com o e-mail e também não há um Student
-        pré-cadastrado, cria um novo perfil de Student junto com a conta —
-        toda conta "student" sempre termina com um `student_id` válido.
+        quando o e-mail informado já estiver cadastrado como personal/aluno
+        (esse caminho ignora `role`/`trainer_mode`, se enviados). Quando
+        nenhum Trainer casa com o e-mail: `role: "student"` cria um novo
+        perfil de Student junto com a conta (toda conta "student" sempre
+        termina com um `student_id` válido); `role: "personal"` cria um
+        Trainer novo conforme `trainer_mode` — `"solo"` (organização
+        privada própria, já aprovado; também o default se `trainer_mode`
+        for omitido), `"create_org"` (organização nova com
+        `organization_name`/`organization_domain`, já aprovado como
+        fundador) ou `"join"` (organização existente por
+        `organization_id`, pendente de aprovação do admin dela — ver
+        `pending_approval` na resposta).
       security: []
       requestBody:
         required: true
@@ -125,6 +135,20 @@ paths:
                 email: { type: string, format: email }
                 password: { type: string, format: password }
                 password_confirmation: { type: string, format: password }
+                role: { type: string, enum: [personal, student] }
+                trainer_mode:
+                  type: string
+                  enum: [solo, join, create_org]
+                  description: Só relevante quando `role` é `"personal"`.
+                organization_id:
+                  type: integer
+                  description: Obrigatório quando `trainer_mode` é `"join"`.
+                organization_name:
+                  type: string
+                  description: Obrigatório quando `trainer_mode` é `"create_org"`.
+                organization_domain:
+                  type: string
+                  description: Obrigatório quando `trainer_mode` é `"create_org"`.
       responses:
         "201":
           description: Conta criada com sucesso
@@ -134,6 +158,8 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/SessionPayload" }
+        "404":
+          description: "organization_id (trainer_mode: join) não encontrado"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
@@ -639,6 +665,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/organizations:
+    get:
+      tags: [Organizations]
+      summary: Lista organizações (id/name/domain)
+      operationId: listOrganizations
+      description: >-
+        Público — usado pelo seletor "entrar numa organização existente" no
+        cadastro, antes mesmo da conta existir. Não expõe nenhum dado
+        sensível (sem contagem de membros, sem trainers/students).
+      security: []
+      responses:
+        "200":
+          description: Lista de organizações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Organization" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/trainers:
     get:
@@ -2818,6 +2868,20 @@ components:
         trainer_id: { type: string, nullable: true }
         student_id: { type: string, nullable: true }
         mfa_enabled: { type: boolean }
+        pending_approval:
+          type: boolean
+          description: >-
+            true quando este usuário é um personal cujo pedido de entrada
+            numa organização existente ainda não foi aprovado pelo admin
+            dela — nesse estado, a maioria dos endpoints retorna 403 (ver
+            /api/v1/trainers/{id}/approve).
+
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        domain: { type: string }
 
     SessionPayload:
       type: object

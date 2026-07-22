@@ -44,6 +44,10 @@ Rails.application.routes.draw do
       # Uploads — presigned S3 URLs
       post "uploads/presign", to: "uploads#presign"
 
+      # Organizações — só listagem pública (seletor "entrar numa organização
+      # existente" no cadastro); criação acontece dentro de auth/register.
+      resources :organizations, only: %i[index]
+
       # Trainers (personals)
       resources :trainers, only: %i[index show create update destroy] do
         collection { get :search }
