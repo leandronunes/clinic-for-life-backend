@@ -163,7 +163,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
     end
 
     describe "role: personal" do
-      it "creates a private organization and an approved trainer for trainer_mode: solo" do
+      it "creates a private organization and an approved trainer for trainer_mode: solo, and makes the user its admin" do
         expect do
           post "/api/v1/auth/register",
                params: valid_params.merge(role: "personal", trainer_mode: "solo")
@@ -171,7 +171,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
 
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
-        expect(json_body["data"]["user"]["role"]).to eq("personal")
+        expect(json_body["data"]["user"]["role"]).to eq("admin")
         expect(json_body["data"]["user"]["pending_approval"]).to be(false)
         expect(user.trainer.approved_at).to be_present
         expect(user.trainer.organization_id).to eq(user.organization_id)
@@ -183,17 +183,19 @@ RSpec.describe "Api::V1::Auth", type: :request do
 
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
+        expect(user.role).to eq("admin")
         expect(user.trainer.approved_at).to be_present
         expect(user.organization.solo).to be(true)
       end
 
-      it "creates a brand-new organization with the given name/domain for trainer_mode: create_org" do
+      it "creates a brand-new organization with the given name/domain for trainer_mode: create_org, and makes the user its admin" do
         post "/api/v1/auth/register",
              params: valid_params.merge(role: "personal", trainer_mode: "create_org",
                                          organization_name: "Clínica Nova", organization_domain: "clinica-nova")
 
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
+        expect(json_body["data"]["user"]["role"]).to eq("admin")
         expect(user.organization.name).to eq("Clínica Nova")
         expect(user.organization.domain).to eq("clinica-nova")
         expect(user.organization.solo).to be(false)
@@ -212,7 +214,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         expect(Trainer.exists?(email: "joao@email.com")).to be false
       end
 
-      it "joins an existing organization as pending approval for trainer_mode: join" do
+      it "joins an existing organization as pending approval for trainer_mode: join, keeping role personal (not its admin)" do
         organization = create(:organization)
 
         expect do
@@ -223,6 +225,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
 
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
+        expect(json_body["data"]["user"]["role"]).to eq("personal")
         expect(user.organization_id).to eq(organization.id)
         expect(user.trainer.approved_at).to be_nil
         expect(json_body["data"]["user"]["pending_approval"]).to be(true)
@@ -245,6 +248,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
 
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
+        expect(user.role).to eq("personal")
         expect(user.trainer_id).to eq(trainer.id)
         expect(user.organization_id).to eq(trainer.organization_id)
         expect(user.organization_id).not_to eq(other_org.id)
@@ -305,6 +309,17 @@ RSpec.describe "Api::V1::Auth", type: :request do
       user = User.find_by(email: "joao@email.com")
       expect(user.trainer_id).to eq(trainer.id)
       expect(json_body["data"]["user"]["role"]).to eq("personal")
+    end
+
+    it "creates a private organization for a brand-new personal and makes them its admin" do
+      expect do
+        post "/api/v1/auth/google", params: { access_token: access_token, role: "personal" }
+      end.to change(Organization, :count).by(1).and change(Trainer, :count).by(1)
+
+      user = User.find_by(email: "joao@email.com")
+      expect(json_body["data"]["user"]["role"]).to eq("admin")
+      expect(user.organization.solo).to be(true)
+      expect(user.trainer.approved_at).to be_present
     end
 
     it "returns 401 for an invalid Google token" do
