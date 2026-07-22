@@ -90,7 +90,7 @@ render json: { error: "mensagem" }, status: :forbidden
 
 | role      | acesso                                      |
 |-----------|---------------------------------------------|
-| `admin`   | tudo                                        |
+| `admin`   | tudo dentro da própria organização (`organization_id`) |
 | `personal`| apenas seus alunos (`trainer_id`)           |
 | `student` | apenas o próprio registro (`student_id`)    |
 

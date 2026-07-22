@@ -93,7 +93,7 @@ module Api
       end
 
       def authorize_for_import(student)
-        return true if current_user.admin?
+        return true if current_user.admin? && student.organization_id == current_user.organization_id
 
         current_user.personal? && student.trainer_id == current_user.trainer_id
       end

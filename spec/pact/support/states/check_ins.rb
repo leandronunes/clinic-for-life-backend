@@ -57,7 +57,7 @@ module PactStates
             FactoryBot.create(:exercise, id: OTHER_EXERCISE_ID, workout: workout)
             FactoryBot.create(:workout_check_in, id: CHECK_IN_ID, workout: workout, student: student,
                                                   status: "in_progress", student_confirmed_at: Time.current)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -71,7 +71,7 @@ module PactStates
             FactoryBot.create(:workout_check_in, id: HISTORY_CHECK_IN_ID, workout: workout, student: student,
                                                   status: "completed", completed_at: Time.current,
                                                   student_confirmed_at: Time.current)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -113,7 +113,7 @@ module PactStates
             FactoryBot.create(:workout_check_in, id: TODAY_CHECK_IN_ID, workout: workout, student: student,
                                                   status: "completed", completed_at: Time.current,
                                                   student_confirmed_at: Time.current)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 

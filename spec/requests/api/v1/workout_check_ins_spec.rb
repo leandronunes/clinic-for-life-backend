@@ -407,7 +407,7 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
     end
 
     it "lets an admin remove a check-in" do
-      admin = create(:user, :admin)
+      admin = create(:user, :admin, organization: trainer.organization)
       check_in = create(:workout_check_in, :completed, workout: workout, student: student)
       delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
              headers: auth_headers(admin)
@@ -470,7 +470,7 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
     end
 
     it "still lets an admin remove a check-in performed by the personal" do
-      admin = create(:user, :admin)
+      admin = create(:user, :admin, organization: trainer.organization)
       check_in = create(:workout_check_in, :completed, :personal_performed, workout: workout, student: student)
 
       delete "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}",
@@ -493,7 +493,7 @@ RSpec.describe "Api::V1::WorkoutCheckIns", type: :request do
     end
 
     it "lets an admin confirm a check-in" do
-      admin = create(:user, :admin)
+      admin = create(:user, :admin, organization: trainer.organization)
       check_in = create(:workout_check_in, :completed, :student_performed, workout: workout, student: student)
 
       post "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/confirm",

@@ -22,7 +22,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, workout: workout)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -31,7 +31,7 @@ module PactStates
             clean_database!
             trainer = FactoryBot.create(:trainer)
             FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -41,7 +41,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:workout, id: WORKOUT_ID, student: student, status: "active")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -52,7 +52,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:workout, id: ARCHIVED_WORKOUT_ID, student: student, status: "archived",
                                         archived_at: Time.current, position: 1)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -63,7 +63,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:workout, id: REORDER_WORKOUT_A, student: student, position: 1)
             FactoryBot.create(:workout, id: REORDER_WORKOUT_B, student: student, position: 2)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -73,7 +73,7 @@ module PactStates
             trainer = FactoryBot.create(:trainer)
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -84,7 +84,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -95,7 +95,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, id: EXERCISE_ID, workout: workout, notes: "Manter postura")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -107,7 +107,7 @@ module PactStates
             workout = FactoryBot.create(:workout, id: WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, id: REORDER_EXERCISE_A, workout: workout, position: 1)
             FactoryBot.create(:exercise, id: REORDER_EXERCISE_B, workout: workout, position: 2)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 
@@ -119,7 +119,7 @@ module PactStates
             student = FactoryBot.create(:student, id: STUDENT_ID, trainer: trainer)
             workout = FactoryBot.create(:workout, id: DELETE_EXERCISE_WORKOUT_ID, student: student)
             FactoryBot.create(:exercise, id: DELETE_EXERCISE_ID, workout: workout)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: trainer.organization))
           end
         end
 

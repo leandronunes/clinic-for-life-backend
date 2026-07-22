@@ -5,7 +5,7 @@ RSpec.describe "Api::V1::CheckInFeedbacks", type: :request do
   let(:personal) { create(:user, :personal, trainer: trainer) }
   let(:student) { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:workout) { create(:workout, student: student) }
   let(:check_in) { create(:workout_check_in, :completed, workout: workout, student: student) }
   let(:base_path) { "/api/v1/students/#{student.id}/workouts/#{workout.id}/check_ins/#{check_in.id}/feedbacks" }

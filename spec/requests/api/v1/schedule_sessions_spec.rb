@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "Api::V1::ScheduleSessions", type: :request do
   let(:trainer) { create(:trainer) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:student) { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
 
@@ -67,7 +67,7 @@ RSpec.describe "Api::V1::ScheduleSessions", type: :request do
 
     it "lets an admin see everything, and filter by trainer_id" do
       create(:schedule_session, student: student, trainer: trainer, starts_at: "2026-07-06T07:00:00-03:00")
-      other_trainer = create(:trainer)
+      other_trainer = create(:trainer, organization: admin.organization)
       other_student = create(:student, trainer: other_trainer)
       create(:schedule_session, student: other_student, trainer: other_trainer,
                                  starts_at: "2026-07-06T08:00:00-03:00")
@@ -78,6 +78,19 @@ RSpec.describe "Api::V1::ScheduleSessions", type: :request do
       get "/api/v1/schedule_sessions", params: { from: "2026-07-01", to: "2026-07-31", trainer_id: trainer.id },
                                         headers: auth_headers(admin)
       expect(json_body["data"].size).to eq(1)
+    end
+
+    it "does not include sessions from another organization for an admin" do
+      create(:schedule_session, student: student, trainer: trainer, starts_at: "2026-07-06T07:00:00-03:00")
+      outside_trainer = create(:trainer) # own independent organization
+      outside_student = create(:student, trainer: outside_trainer)
+      create(:schedule_session, student: outside_student, trainer: outside_trainer,
+                                 starts_at: "2026-07-06T08:00:00-03:00")
+
+      get "/api/v1/schedule_sessions", params: { from: "2026-07-01", to: "2026-07-31" }, headers: auth_headers(admin)
+
+      expect(json_body["data"].size).to eq(1)
+      expect(json_body["data"].first["student_id"]).to eq(student.id.to_s)
     end
 
     it "orders results by starts_at ascending" do

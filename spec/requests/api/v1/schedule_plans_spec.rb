@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "Api::V1::SchedulePlans", type: :request do
   let(:trainer) { create(:trainer) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:student) { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
 

@@ -3,11 +3,13 @@ require "rails_helper"
 RSpec.describe "Api::V1::ChatConversations", type: :request do
   let(:trainer) { create(:trainer) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
-  let(:other_trainer) { create(:trainer) }
+  # Mesma organização do trainer principal — o teste "admin vê tudo" quer
+  # verificar visibilidade cross-trainer, não cross-org.
+  let(:other_trainer) { create(:trainer, organization: trainer.organization) }
   let(:student) { create(:student, trainer: trainer) }
   let(:student_user) { create(:user, :student_account, student: student) }
   let(:other_student) { create(:student, trainer: other_trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
 
   describe "GET /api/v1/chat/conversations" do
     it "lets an aluno see only their own conversation" do
@@ -39,6 +41,17 @@ RSpec.describe "Api::V1::ChatConversations", type: :request do
 
       ids = json_body["data"].map { |c| c["student_id"] }
       expect(ids).to include(student.id.to_s, other_student.id.to_s)
+    end
+
+    it "does not include a conversation from another organization" do
+      outside_student = create(:student) # own independent organization
+      create(:chat_message, :from_aluno, student: student)
+      create(:chat_message, :from_personal, student: outside_student)
+
+      get "/api/v1/chat/conversations", headers: auth_headers(admin)
+
+      ids = json_body["data"].map { |c| c["student_id"] }
+      expect(ids).not_to include(outside_student.id.to_s)
     end
 
     it "includes a null last_message and zero unread_count for a student with no messages" do

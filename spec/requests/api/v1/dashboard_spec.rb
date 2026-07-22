@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Api::V1::Dashboard", type: :request do
   let(:trainer) { create(:trainer) }
-  let(:admin) { create(:user, :admin) }
+  let(:admin) { create(:user, :admin, organization: trainer.organization) }
   let(:personal) { create(:user, :personal, trainer: trainer) }
 
   describe "GET /api/v1/dashboard/kpis" do
@@ -71,7 +71,7 @@ RSpec.describe "Api::V1::Dashboard", type: :request do
 
   describe "GET /api/v1/dashboard/attendance" do
     it "returns the attendance summary" do
-      student = create(:student, status: "active")
+      student = create(:student, status: "active", trainer: create(:trainer, organization: admin.organization))
       workout = create(:workout, student: student)
       create(:workout_check_in, :completed, workout: workout, student: student)
       create(:workout_check_in, workout: create(:workout, student: student), student: student)
