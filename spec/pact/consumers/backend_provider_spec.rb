@@ -25,6 +25,7 @@ RSpec.describe "Clinic For Life API" do
   instance_eval(&PactStates::Auth.definitions)
   instance_eval(&PactStates::Students.definitions)
   instance_eval(&PactStates::Trainers.definitions)
+  instance_eval(&PactStates::Organizations.definitions)
   instance_eval(&PactStates::Workouts.definitions)
   instance_eval(&PactStates::Anamnesis.definitions)
   instance_eval(&PactStates::StructuralAssessmentStates.definitions)

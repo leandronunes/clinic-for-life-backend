@@ -327,6 +327,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
       get "/api/v1/auth/me", headers: auth_headers(user)
       expect(response).to have_http_status(:ok)
       expect(json_body["data"]["id"]).to eq(user.id.to_s)
+      expect(json_body["data"]["organization_id"]).to eq(user.organization_id.to_s)
     end
 
     it "rejects requests without a token" do
