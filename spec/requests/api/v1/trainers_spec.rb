@@ -6,15 +6,22 @@ RSpec.describe "Api::V1::Trainers", type: :request do
 
   describe "GET /api/v1/trainers" do
     it "lists trainers for an authenticated user" do
-      create_list(:trainer, 2)
+      create_list(:trainer, 2, organization: admin.organization)
       get "/api/v1/trainers", headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)
       expect(json_body["meta"]["total"]).to be >= 2
     end
 
+    it "does not include trainers from another organization" do
+      create(:trainer, organization: admin.organization)
+      create(:trainer) # different organization entirely
+      get "/api/v1/trainers", headers: auth_headers(admin)
+      expect(json_body["meta"]["total"]).to eq(1)
+    end
+
     it "does not filter by status when the param is absent" do
-      create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Marina Souza", status: "inactive")
+      create(:trainer, name: "Rafael Monteiro", status: "active", organization: admin.organization)
+      create(:trainer, name: "Marina Souza", status: "inactive", organization: admin.organization)
       get "/api/v1/trainers", headers: auth_headers(admin)
 
       names = json_body["data"].map { |t| t["name"] }
@@ -22,8 +29,8 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "filters trainers by a single status" do
-      create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Marina Souza", status: "inactive")
+      create(:trainer, name: "Rafael Monteiro", status: "active", organization: admin.organization)
+      create(:trainer, name: "Marina Souza", status: "inactive", organization: admin.organization)
       get "/api/v1/trainers", params: { status: "active" }, headers: auth_headers(admin)
 
       names = json_body["data"].map { |t| t["name"] }
@@ -32,9 +39,9 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "filters trainers by multiple comma-separated statuses" do
-      create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Carlos Eduardo", status: "blocked")
-      create(:trainer, name: "Marina Souza", status: "inactive")
+      create(:trainer, name: "Rafael Monteiro", status: "active", organization: admin.organization)
+      create(:trainer, name: "Carlos Eduardo", status: "blocked", organization: admin.organization)
+      create(:trainer, name: "Marina Souza", status: "inactive", organization: admin.organization)
       get "/api/v1/trainers", params: { status: "active,blocked" }, headers: auth_headers(admin)
 
       names = json_body["data"].map { |t| t["name"] }
@@ -45,8 +52,8 @@ RSpec.describe "Api::V1::Trainers", type: :request do
 
   describe "GET /api/v1/trainers/search" do
     it "filters trainers by query" do
-      create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Outro Rafael", status: "blocked")
+      create(:trainer, name: "Rafael Monteiro", status: "active", organization: admin.organization)
+      create(:trainer, name: "Outro Rafael", status: "blocked", organization: admin.organization)
       get "/api/v1/trainers/search", params: { query: "rafael" }, headers: auth_headers(admin)
 
       names = json_body["data"].map { |t| t["name"] }
@@ -54,8 +61,8 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "combines query and status filters" do
-      create(:trainer, name: "Rafael Monteiro", status: "active")
-      create(:trainer, name: "Rafael Blocked", status: "blocked")
+      create(:trainer, name: "Rafael Monteiro", status: "active", organization: admin.organization)
+      create(:trainer, name: "Rafael Blocked", status: "blocked", organization: admin.organization)
       get "/api/v1/trainers/search", params: { query: "rafael", status: "active" },
                                       headers: auth_headers(admin)
 
@@ -65,7 +72,7 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "returns trainers when query is blank" do
-      create(:trainer, status: "active")
+      create(:trainer, status: "active", organization: admin.organization)
       get "/api/v1/trainers/search", headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)
     end
@@ -73,7 +80,7 @@ RSpec.describe "Api::V1::Trainers", type: :request do
 
   describe "GET /api/v1/trainers/:id" do
     it "returns a single trainer" do
-      trainer = create(:trainer)
+      trainer = create(:trainer, organization: admin.organization)
       get "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
       expect(json_body["data"]["id"]).to eq(trainer.id.to_s)
     end
@@ -81,6 +88,12 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     it "returns 404 for an unknown trainer" do
       get "/api/v1/trainers/999999", headers: auth_headers(admin)
       expect(response).to have_http_status(:not_found)
+    end
+
+    it "forbids an admin from viewing a trainer in another organization" do
+      trainer = create(:trainer) # different organization entirely
+      get "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
     end
   end
 
@@ -110,16 +123,23 @@ RSpec.describe "Api::V1::Trainers", type: :request do
 
   describe "PATCH /api/v1/trainers/:id" do
     it "updates a trainer as admin" do
-      trainer = create(:trainer)
+      trainer = create(:trainer, organization: admin.organization)
       patch "/api/v1/trainers/#{trainer.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
       expect(response).to have_http_status(:ok)
       expect(trainer.reload.name).to eq("Renamed")
+    end
+
+    it "forbids an admin from updating a trainer in another organization" do
+      trainer = create(:trainer) # different organization entirely
+      patch "/api/v1/trainers/#{trainer.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
+      expect(trainer.reload.name).not_to eq("Renamed")
     end
   end
 
   describe "DELETE /api/v1/trainers/:id" do
     it "destroys the trainer as admin and returns 204" do
-      trainer = create(:trainer)
+      trainer = create(:trainer, organization: admin.organization)
       expect do
         delete "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
       end.to change(Trainer, :count).by(-1)
@@ -127,7 +147,7 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "records an audit log on deletion" do
-      trainer = create(:trainer)
+      trainer = create(:trainer, organization: admin.organization)
       expect do
         delete "/api/v1/trainers/#{trainer.id}", headers: auth_headers(admin)
       end.to change(AuditLog, :count).by(1)
@@ -135,8 +155,8 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "nullifies associated students' trainer_id instead of cascading" do
-      trainer_record = create(:trainer)
-      student = create(:student, trainer: trainer_record)
+      trainer_record = create(:trainer, organization: admin.organization)
+      student = create(:student, trainer: trainer_record, organization: admin.organization)
       delete "/api/v1/trainers/#{trainer_record.id}", headers: auth_headers(admin)
       expect(Student.exists?(student.id)).to be true
       expect(student.reload.trainer_id).to be_nil
@@ -146,6 +166,13 @@ RSpec.describe "Api::V1::Trainers", type: :request do
       trainer_record = create(:trainer)
       delete "/api/v1/trainers/#{trainer_record.id}", headers: auth_headers(personal)
       expect(response).to have_http_status(:forbidden)
+    end
+
+    it "forbids an admin from deleting a trainer in another organization" do
+      trainer_record = create(:trainer) # different organization entirely
+      delete "/api/v1/trainers/#{trainer_record.id}", headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
+      expect(Trainer.exists?(trainer_record.id)).to be true
     end
 
     it "returns 404 for an unknown trainer" do

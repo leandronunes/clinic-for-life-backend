@@ -9,42 +9,47 @@ module PactStates
         provider_state "at least one trainer exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, name: "Ana Personal")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, name: "Ana Personal", organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "a trainer matching the search query exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, name: "Ana Personal", status: "active")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, name: "Ana Personal", status: "active", organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "at least one active trainer exists, alongside an inactive one" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, name: "Ana Personal", status: "active")
-            FactoryBot.create(:trainer, name: "Marina Inativa", status: "inactive")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, name: "Ana Personal", status: "active", organization: organization)
+            FactoryBot.create(:trainer, name: "Marina Inativa", status: "inactive", organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "an active trainer matching the search query exists, alongside a blocked one" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, name: "Ana Personal", status: "active")
-            FactoryBot.create(:trainer, name: "Ana Bloqueada", status: "blocked")
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, name: "Ana Personal", status: "active", organization: organization)
+            FactoryBot.create(:trainer, name: "Ana Bloqueada", status: "blocked", organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "a trainer with id #{PactStates::Trainers::SHOW_ID} exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, id: PactStates::Trainers::SHOW_ID)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, id: PactStates::Trainers::SHOW_ID, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
@@ -72,16 +77,18 @@ module PactStates
         provider_state "a trainer with id #{PactStates::Trainers::UPDATE_ID} exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, id: PactStates::Trainers::UPDATE_ID)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, id: PactStates::Trainers::UPDATE_ID, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "a trainer with id #{PactStates::Trainers::DELETE_ID} exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, id: PactStates::Trainers::DELETE_ID)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, id: PactStates::Trainers::DELETE_ID, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
       end
