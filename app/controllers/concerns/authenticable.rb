@@ -13,6 +13,15 @@ module Authenticable
     render_unauthorized unless @current_user
   end
 
+  # For actions that work both pre- and post-auth (e.g. the public partners
+  # showcase, which shows a narrower org-scoped catalog once logged in) —
+  # populates current_user when a valid token is present, without requiring
+  # one. Used instead of skip_before_action :authenticate_request! alone,
+  # which would leave current_user nil even for an authenticated caller.
+  def attempt_authentication!
+    @current_user = user_from_token
+  end
+
   def user_from_token
     header = request.headers["Authorization"]
     token = header.to_s.split(" ").last

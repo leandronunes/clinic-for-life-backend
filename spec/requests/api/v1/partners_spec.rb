@@ -6,16 +6,24 @@ RSpec.describe "Api::V1::Partners", type: :request do
 
   describe "GET /api/v1/partners" do
     it "lists partners for any authenticated user" do
-      create_list(:partner, 2)
+      create_list(:partner, 2, organization: student_user.organization)
       get "/api/v1/partners", headers: auth_headers(student_user)
       expect(response).to have_http_status(:ok)
       expect(json_body["data"].size).to eq(2)
     end
 
+    it "does not include partners from another organization for an authenticated user" do
+      create(:partner, organization: student_user.organization)
+      create(:partner) # different organization entirely
+      get "/api/v1/partners", headers: auth_headers(student_user)
+      expect(json_body["data"].size).to eq(1)
+    end
+
     it "filters by category" do
-      create(:partner, category: "Nutrition")
-      create(:partner, category: "Physiotherapy")
+      create(:partner, category: "Nutrition", organization: admin.organization)
+      create(:partner, category: "Physiotherapy", organization: admin.organization)
       get "/api/v1/partners", params: { category: "Nutrition" }, headers: auth_headers(admin)
+      expect(json_body["data"].size).to eq(1)
       expect(json_body["data"].map { |p| p["category"] }).to all(eq("Nutrition"))
     end
 
@@ -80,26 +88,40 @@ RSpec.describe "Api::V1::Partners", type: :request do
 
   describe "PATCH /api/v1/partners/:id" do
     it "updates a partner as admin" do
-      partner = create(:partner)
+      partner = create(:partner, organization: admin.organization)
       patch "/api/v1/partners/#{partner.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
       expect(partner.reload.name).to eq("Renamed")
     end
 
     it "updates discount_details" do
-      partner = create(:partner)
+      partner = create(:partner, organization: admin.organization)
       patch "/api/v1/partners/#{partner.id}", params: { discount_details: "20% off" },
                                                headers: auth_headers(admin)
       expect(partner.reload.discount_details).to eq("20% off")
+    end
+
+    it "forbids an admin from updating a partner in another organization" do
+      partner = create(:partner) # different organization entirely
+      patch "/api/v1/partners/#{partner.id}", params: { name: "Renamed" }, headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
+      expect(partner.reload.name).not_to eq("Renamed")
     end
   end
 
   describe "DELETE /api/v1/partners/:id" do
     it "deletes a partner as admin" do
-      partner = create(:partner)
+      partner = create(:partner, organization: admin.organization)
       expect do
         delete "/api/v1/partners/#{partner.id}", headers: auth_headers(admin)
       end.to change(Partner, :count).by(-1)
       expect(response).to have_http_status(:no_content)
+    end
+
+    it "forbids an admin from deleting a partner in another organization" do
+      partner = create(:partner) # different organization entirely
+      delete "/api/v1/partners/#{partner.id}", headers: auth_headers(admin)
+      expect(response).to have_http_status(:forbidden)
+      expect(Partner.exists?(partner.id)).to be true
     end
   end
 end

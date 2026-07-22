@@ -10,8 +10,9 @@ module PactStates
         provider_state "at least one partner exists" do
           set_up do
             clean_database!
-            FactoryBot.create_list(:partner, 2)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create_list(:partner, 2, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
@@ -39,16 +40,18 @@ module PactStates
         provider_state "a partner with id 2102 exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:partner, id: 2102)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:partner, id: 2102, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
         provider_state "a partner with id 2103 exists" do
           set_up do
             clean_database!
-            FactoryBot.create(:partner, id: 2103)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:partner, id: 2103, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
       end
