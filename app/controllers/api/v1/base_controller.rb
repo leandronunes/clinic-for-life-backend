@@ -6,6 +6,8 @@ module Api
       include OrganizationScoped
       include Auditable
 
+      before_action :block_if_pending_trainer!
+
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
       rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable
 

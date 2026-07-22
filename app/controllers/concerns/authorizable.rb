@@ -34,4 +34,18 @@ module Authorizable
 
     render json: { error: "Forbidden" }, status: :forbidden
   end
+
+  # A personal whose Trainer#approved_at is still nil requested to join an
+  # existing organization and hasn't been approved by that org's admin yet
+  # (see TrainersController#approve/#reject). Blocks everything except the
+  # handful of self-service account actions explicitly skipped in
+  # AuthController — organization_id is already set to the target org at
+  # this point, so without this gate a pending trainer would otherwise show
+  # up in that org's listings/dashboards despite not being a real member yet.
+  def block_if_pending_trainer!
+    return unless current_user&.personal?
+    return if current_user.trainer&.approved_at.present?
+
+    render json: { error: "Cadastro pendente de aprovação", code: "pending_approval" }, status: :forbidden
+  end
 end

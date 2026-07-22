@@ -653,6 +653,10 @@ paths:
             Filtra por status. Aceita um valor único ("active") ou múltiplos
             separados por vírgula ("active,blocked"). Sem o parâmetro, retorna
             trainers de qualquer status.
+        - name: pending
+          in: query
+          schema: { type: boolean }
+          description: Quando `true`, retorna só trainers aguardando aprovação (`approved_at` nulo).
       responses:
         "200":
           description: Lista de trainers
@@ -807,6 +811,53 @@ paths:
       responses:
         "204":
           description: Removido com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/trainers/{id}/approve:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    patch:
+      tags: [Trainers]
+      summary: Aprova um trainer pendente de entrada na organização
+      operationId: approveTrainer
+      description: >-
+        Requer papel `admin` da mesma organização do trainer. Idempotente —
+        aprovar um trainer já aprovado não tem efeito.
+      responses:
+        "200":
+          description: Trainer aprovado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Trainer" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/trainers/{id}/reject:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    delete:
+      tags: [Trainers]
+      summary: Rejeita um trainer pendente de entrada na organização
+      operationId: rejectTrainer
+      description: >-
+        Requer papel `admin` da mesma organização do trainer. Remove o
+        Trainer e o User associado (evita deixar o e-mail permanentemente
+        indisponível para um novo cadastro).
+      responses:
+        "204":
+          description: Rejeitado e removido com sucesso
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2791,6 +2842,15 @@ components:
         status: { $ref: "#/components/schemas/TrainerStatus" }
         avatar_url: { type: string, format: uri, nullable: true }
         students_count: { type: integer }
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Presente quando o trainer já foi aprovado (sempre presente pra
+            trainers criados diretamente por um admin ou autocadastrados como
+            solo/criando organização; nulo enquanto aguarda aprovação do admin
+            da organização que pediu pra entrar).
 
     TrainerInput:
       type: object

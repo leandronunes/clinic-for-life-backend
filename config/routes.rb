@@ -47,6 +47,10 @@ Rails.application.routes.draw do
       # Trainers (personals)
       resources :trainers, only: %i[index show create update destroy] do
         collection { get :search }
+        member do
+          patch :approve
+          delete :reject
+        end
       end
 
       # Students

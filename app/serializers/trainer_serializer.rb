@@ -13,7 +13,8 @@ class TrainerSerializer
       phone: @trainer.phone,
       status: @trainer.status,
       avatar_url: @trainer.avatar_url,
-      students_count: @trainer.students_count
+      students_count: @trainer.students_count,
+      approved_at: @trainer.approved_at&.iso8601
     }
   end
 end
