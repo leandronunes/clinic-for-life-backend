@@ -7,5 +7,6 @@ FactoryBot.define do
     coupon { "FORLIFE10" }
     link { "https://example.com/partner" }
     logo_url { "https://example.com/logo.png" }
+    association :organization
   end
 end

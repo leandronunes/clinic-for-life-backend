@@ -122,7 +122,10 @@ RSpec.describe "Api::V1::Students", type: :request do
     end
 
     it "lets a student switch their own trainer" do
-      new_trainer = create(:trainer)
+      # Mesma organização do trainer original — trocar de personal dentro
+      # da mesma clínica é o caso suportado; trocar de organização não é
+      # (Student#organization_matches_trainer barra isso de propósito).
+      new_trainer = create(:trainer, organization: trainer.organization)
       student = create(:student, trainer: trainer)
       student_user = create(:user, :student_account, student: student)
 

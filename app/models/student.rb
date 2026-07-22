@@ -3,6 +3,7 @@ class Student < ApplicationRecord
   STATUSES = %w[active inactive].freeze
 
   belongs_to :trainer, optional: true
+  belongs_to :organization
   has_one :user, dependent: :nullify
   has_many :bioimpedance_measurements, dependent: :destroy
   has_many :evolution_photos, dependent: :destroy
@@ -24,9 +25,23 @@ class Student < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :contracted_workouts_per_cycle,
             numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  validate :organization_matches_trainer
   before_validation { self.email = email.to_s.downcase.strip }
 
   def trainer_name
     trainer&.name
+  end
+
+  private
+
+  # student.organization_id não é derivável só via trainer_id (trainer é
+  # opcional — aluno pode ficar órfão), por isso é coluna própria; quando
+  # há trainer, os dois precisam concordar pra não deixar o aluno "vazar"
+  # pra uma organização diferente da do seu próprio personal.
+  def organization_matches_trainer
+    return if trainer.nil? || organization_id.nil?
+    return if organization_id == trainer.organization_id
+
+    errors.add(:organization_id, "deve ser a mesma organização do trainer")
   end
 end

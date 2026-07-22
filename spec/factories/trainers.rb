@@ -6,5 +6,7 @@ FactoryBot.define do
     sequence(:email) { |n| "trainer#{n}@forlife.app" }
     phone { "(11) 98888-0000" }
     status { "active" }
+    association :organization
+    approved_at { Time.current }
   end
 end

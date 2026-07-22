@@ -15,6 +15,7 @@ module Api
       # POST /api/v1/partners
       def create
         partner = Partner.new(partner_params)
+        partner.organization_id = current_user.organization_id
         partner.save!
         audit!("partner.create", record: partner)
         render_data(PartnerSerializer.new(partner).as_json, status: :created)

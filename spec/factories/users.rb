@@ -5,6 +5,7 @@ FactoryBot.define do
     password { "Str0ng@Pass" }
     role { "student" }
     terms_accepted_at { Time.current }
+    association :organization
 
     trait :admin do
       role { "admin" }
@@ -15,11 +16,13 @@ FactoryBot.define do
     trait :personal do
       role { "personal" }
       association :trainer
+      organization { trainer.organization }
     end
 
     trait :student_account do
       role { "student" }
       association :student
+      organization { student.organization }
     end
   end
 end

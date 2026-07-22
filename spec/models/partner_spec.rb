@@ -1,6 +1,10 @@
 require "rails_helper"
 
 RSpec.describe Partner, type: :model do
+  describe "associations" do
+    it { is_expected.to belong_to(:organization) }
+  end
+
   describe "validations" do
     subject { build(:partner) }
 
