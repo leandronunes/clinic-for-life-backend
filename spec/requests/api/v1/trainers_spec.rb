@@ -180,4 +180,77 @@ RSpec.describe "Api::V1::Trainers", type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  describe "GET /api/v1/trainers?pending=true" do
+    it "returns only trainers awaiting approval within the admin's organization" do
+      create(:trainer, organization: admin.organization, approved_at: nil)
+      create(:trainer, organization: admin.organization) # already approved
+      get "/api/v1/trainers", params: { pending: "true" }, headers: auth_headers(admin)
+
+      expect(json_body["meta"]["total"]).to eq(1)
+      expect(json_body["data"].first["approved_at"]).to be_nil
+    end
+  end
+
+  describe "PATCH /api/v1/trainers/:id/approve" do
+    it "stamps approved_at and records an audit log" do
+      trainer = create(:trainer, organization: admin.organization, approved_at: nil)
+      patch "/api/v1/trainers/#{trainer.id}/approve", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["approved_at"]).to be_present
+      expect(trainer.reload.approved_at).to be_present
+      expect(AuditLog.last.action).to eq("trainer.approve")
+    end
+
+    it "is idempotent for an already-approved trainer" do
+      trainer = create(:trainer, organization: admin.organization)
+      approved_at = trainer.approved_at
+      patch "/api/v1/trainers/#{trainer.id}/approve", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(trainer.reload.approved_at).to be_within(1.second).of(approved_at)
+    end
+
+    it "forbids an admin from approving a trainer in another organization" do
+      trainer = create(:trainer, approved_at: nil) # different organization entirely
+      patch "/api/v1/trainers/#{trainer.id}/approve", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(trainer.reload.approved_at).to be_nil
+    end
+
+    it "forbids a personal from approving a trainer" do
+      trainer = create(:trainer, organization: personal.organization, approved_at: nil)
+      patch "/api/v1/trainers/#{trainer.id}/approve", headers: auth_headers(personal)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe "DELETE /api/v1/trainers/:id/reject" do
+    it "destroys both the trainer and its user in one transaction" do
+      trainer = create(:trainer, organization: admin.organization, approved_at: nil)
+      user = create(:user, :personal, trainer: trainer, organization: admin.organization)
+
+      delete "/api/v1/trainers/#{trainer.id}/reject", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+      expect(Trainer.exists?(trainer.id)).to be false
+      expect(User.exists?(user.id)).to be false
+    end
+
+    it "records an audit log on rejection" do
+      trainer = create(:trainer, organization: admin.organization, approved_at: nil)
+      delete "/api/v1/trainers/#{trainer.id}/reject", headers: auth_headers(admin)
+      expect(AuditLog.last.action).to eq("trainer.reject")
+    end
+
+    it "forbids an admin from rejecting a trainer in another organization" do
+      trainer = create(:trainer, approved_at: nil) # different organization entirely
+      delete "/api/v1/trainers/#{trainer.id}/reject", headers: auth_headers(admin)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(Trainer.exists?(trainer.id)).to be true
+    end
+  end
 end

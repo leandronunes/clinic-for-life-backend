@@ -2,6 +2,9 @@ module Api
   module V1
     class AuthController < BaseController
       skip_before_action :authenticate_request!, only: %i[login register google_auth forgot_password reset_password]
+      # A pending trainer (awaiting org approval) still needs to manage their
+      # own account — see Authorizable#block_if_pending_trainer!.
+      skip_before_action :block_if_pending_trainer!, only: %i[me update_me update_password]
 
       FORGOT_PASSWORD_MESSAGE = "Se o e-mail existir, enviaremos um link de redefinição.".freeze
 
