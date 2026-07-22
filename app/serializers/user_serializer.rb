@@ -14,6 +14,7 @@ class UserSerializer
       trainer_id: @user.trainer_id&.to_s,
       student_id: @user.student_id&.to_s,
       organization_id: @user.organization_id&.to_s,
+      organization_solo: @user.organization.solo,
       mfa_enabled: @user.mfa_enabled,
       pending_approval: @user.trainer.present? && @user.trainer.approved_at.nil?
     }

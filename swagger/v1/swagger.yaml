@@ -2935,6 +2935,13 @@ components:
         trainer_id: { type: string, nullable: true }
         student_id: { type: string, nullable: true }
         organization_id: { type: string, nullable: true }
+        organization_solo:
+          type: boolean
+          description: >-
+            true quando a organização deste usuário foi autogerada para um
+            personal atuando sozinho (ver Organization#solo) — o frontend
+            usa isso para esconder a gestão de organização (menu e rota)
+            desse admin, já que não é uma organização "de verdade".
         mfa_enabled: { type: boolean }
         pending_approval:
           type: boolean
