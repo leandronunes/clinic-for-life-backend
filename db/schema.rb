@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_005254) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_212516) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -203,6 +203,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_005254) do
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.string "name", null: false
+    t.boolean "solo", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_organizations_on_domain", unique: true
   end

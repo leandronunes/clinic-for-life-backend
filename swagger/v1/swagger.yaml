@@ -674,7 +674,10 @@ paths:
       description: >-
         Público — usado pelo seletor "entrar numa organização existente" no
         cadastro, antes mesmo da conta existir. Não expõe nenhum dado
-        sensível (sem contagem de membros, sem trainers/students).
+        sensível (sem contagem de membros, sem trainers/students). Exclui
+        organizações privadas autogeradas para um personal que optou por
+        atuar sozinho — não são organizações que outra pessoa poderia
+        querer entrar.
       security: []
       responses:
         "200":

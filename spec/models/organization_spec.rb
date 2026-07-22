@@ -35,4 +35,14 @@ RSpec.describe Organization, type: :model do
       expect(organization.domain).to eq("acme-clinic")
     end
   end
+
+  describe "solo" do
+    it "defaults to false" do
+      expect(create(:organization).solo).to be(false)
+    end
+
+    it "can be flagged as a solo trainer's auto-generated organization" do
+      expect(create(:organization, :solo).solo).to be(true)
+    end
+  end
 end

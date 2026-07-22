@@ -8,8 +8,13 @@ module Api
       before_action -> { require_role!(:admin) }, only: %i[update]
 
       # GET /api/v1/organizations
+      #
+      # Exclui organizações `solo: true` — são as organizações privadas
+      # autogeradas para um personal que optou por atuar sozinho no
+      # cadastro (ver AuthController#build_trainer_for_registration!), não
+      # organizações reais que outra pessoa poderia querer entrar.
       def index
-        organizations = Organization.order(:name)
+        organizations = Organization.where(solo: false).order(:name)
         render_data(organizations.map { |o| OrganizationSerializer.new(o).as_json })
       end
 

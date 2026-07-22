@@ -175,6 +175,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         expect(json_body["data"]["user"]["pending_approval"]).to be(false)
         expect(user.trainer.approved_at).to be_present
         expect(user.trainer.organization_id).to eq(user.organization_id)
+        expect(user.organization.solo).to be(true)
       end
 
       it "defaults to solo when trainer_mode is absent" do
@@ -183,6 +184,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
         expect(user.trainer.approved_at).to be_present
+        expect(user.organization.solo).to be(true)
       end
 
       it "creates a brand-new organization with the given name/domain for trainer_mode: create_org" do
@@ -194,6 +196,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         user = User.find_by(email: "joao@email.com")
         expect(user.organization.name).to eq("Clínica Nova")
         expect(user.organization.domain).to eq("clinica-nova")
+        expect(user.organization.solo).to be(false)
         expect(user.trainer.approved_at).to be_present
       end
 
