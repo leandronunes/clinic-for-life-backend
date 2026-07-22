@@ -173,6 +173,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         user = User.find_by(email: "joao@email.com")
         expect(json_body["data"]["user"]["role"]).to eq("admin")
         expect(json_body["data"]["user"]["pending_approval"]).to be(false)
+        expect(json_body["data"]["user"]["organization_solo"]).to be(true)
         expect(user.trainer.approved_at).to be_present
         expect(user.trainer.organization_id).to eq(user.organization_id)
         expect(user.organization.solo).to be(true)
@@ -196,6 +197,7 @@ RSpec.describe "Api::V1::Auth", type: :request do
         expect(response).to have_http_status(:created)
         user = User.find_by(email: "joao@email.com")
         expect(json_body["data"]["user"]["role"]).to eq("admin")
+        expect(json_body["data"]["user"]["organization_solo"]).to be(false)
         expect(user.organization.name).to eq("Clínica Nova")
         expect(user.organization.domain).to eq("clinica-nova")
         expect(user.organization.solo).to be(false)
@@ -346,6 +348,16 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(response).to have_http_status(:ok)
       expect(json_body["data"]["id"]).to eq(user.id.to_s)
       expect(json_body["data"]["organization_id"]).to eq(user.organization_id.to_s)
+      expect(json_body["data"]["organization_solo"]).to be(false)
+    end
+
+    it "flags organization_solo when the user's organization was auto-generated for a solo trainer" do
+      solo_org = create(:organization, :solo)
+      solo_admin = create(:user, :admin, organization: solo_org)
+
+      get "/api/v1/auth/me", headers: auth_headers(solo_admin)
+
+      expect(json_body["data"]["organization_solo"]).to be(true)
     end
 
     it "rejects requests without a token" do
