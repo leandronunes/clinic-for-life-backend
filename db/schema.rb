@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_005254) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -199,6 +199,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.index ["anamnesis_id"], name: "index_external_professionals_on_anamnesis_id"
   end
 
+  create_table "organizations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "domain", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "index_organizations_on_domain", unique: true
+  end
+
   create_table "partners", force: :cascade do |t|
     t.string "category", null: false
     t.string "coupon"
@@ -208,8 +216,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.string "link"
     t.string "logo_url"
     t.string "name", null: false
+    t.bigint "organization_id", null: false
     t.datetime "updated_at", null: false
     t.index ["category"], name: "index_partners_on_category"
+    t.index ["organization_id"], name: "index_partners_on_organization_id"
   end
 
   create_table "push_subscriptions", force: :cascade do |t|
@@ -300,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.string "emergency_contact"
     t.string "health_plan"
     t.string "name", null: false
+    t.bigint "organization_id", null: false
     t.boolean "partner_card_enabled", default: true, null: false
     t.string "phone"
     t.string "sex", default: "other", null: false
@@ -307,23 +318,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.bigint "trainer_id"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_students_on_email", unique: true
+    t.index ["organization_id"], name: "index_students_on_organization_id"
     t.index ["status"], name: "index_students_on_status"
     t.index ["trainer_id"], name: "index_students_on_trainer_id"
   end
 
   create_table "trainers", force: :cascade do |t|
+    t.datetime "approved_at"
     t.string "avatar_url"
     t.string "cpf"
     t.datetime "created_at", null: false
     t.string "cref"
     t.string "email", null: false
     t.string "name", null: false
+    t.bigint "organization_id", null: false
     t.string "phone"
     t.string "status", default: "active", null: false
     t.datetime "updated_at", null: false
     t.index ["cpf"], name: "index_trainers_on_cpf", unique: true
     t.index ["cref"], name: "index_trainers_on_cref", unique: true
     t.index ["email"], name: "index_trainers_on_email", unique: true
+    t.index ["organization_id"], name: "index_trainers_on_organization_id"
     t.index ["status"], name: "index_trainers_on_status"
   end
 
@@ -334,6 +349,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.datetime "last_login_at"
     t.boolean "mfa_enabled", default: false, null: false
     t.string "name", null: false
+    t.bigint "organization_id", null: false
     t.string "password_digest", null: false
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token_digest"
@@ -343,6 +359,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
     t.bigint "trainer_id"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["organization_id"], name: "index_users_on_organization_id"
     t.index ["reset_password_token_digest"], name: "index_users_on_reset_password_token_digest", unique: true
     t.index ["role"], name: "index_users_on_role"
     t.index ["student_id"], name: "index_users_on_student_id"
@@ -400,6 +417,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
   add_foreign_key "exercise_check_ins", "workout_check_ins"
   add_foreign_key "exercises", "workouts"
   add_foreign_key "external_professionals", "anamneses", column: "anamnesis_id"
+  add_foreign_key "partners", "organizations"
   add_foreign_key "push_subscriptions", "users"
   add_foreign_key "schedule_plan_slots", "schedule_plans"
   add_foreign_key "schedule_plans", "students"
@@ -410,7 +428,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_182245) do
   add_foreign_key "schedule_sessions", "workout_check_ins"
   add_foreign_key "schedule_sessions", "workouts"
   add_foreign_key "structural_assessments", "students"
+  add_foreign_key "students", "organizations"
   add_foreign_key "students", "trainers"
+  add_foreign_key "trainers", "organizations"
+  add_foreign_key "users", "organizations"
   add_foreign_key "users", "students"
   add_foreign_key "users", "trainers"
   add_foreign_key "workout_check_ins", "students"

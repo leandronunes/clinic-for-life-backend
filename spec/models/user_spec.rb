@@ -4,6 +4,7 @@ RSpec.describe User, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:trainer).optional }
     it { is_expected.to belong_to(:student).optional }
+    it { is_expected.to belong_to(:organization) }
     it { is_expected.to have_many(:audit_logs).dependent(:nullify) }
   end
 

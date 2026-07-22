@@ -7,5 +7,6 @@ FactoryBot.define do
     phone { "(11) 97777-0000" }
     status { "active" }
     association :trainer
+    organization { trainer&.organization || association(:organization) }
   end
 end

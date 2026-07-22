@@ -33,6 +33,7 @@ module Api
       def create
         student = Student.new(student_params.merge(admin_only_params).merge(staff_only_params))
         student.trainer_id ||= current_user.trainer_id if current_user.personal?
+        student.organization_id = current_user.organization_id
         student.save!
         audit!("student.create", record: student)
         render_data(StudentSerializer.new(student).as_json, status: :created)

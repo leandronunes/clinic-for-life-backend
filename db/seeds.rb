@@ -7,6 +7,15 @@ puts "Seeding Clinic For Life..."
 
 ActiveRecord::Base.transaction do
   # ---------------------------------------------------------------------------
+  # Default organization — every trainer/student/user/partner seeded below
+  # belongs to it, mirroring the same bucket the legacy-data migration uses
+  # in production (db/migrate/*_create_organizations_and_backfill_default_tenant.rb).
+  # ---------------------------------------------------------------------------
+  default_org = Organization.find_or_create_by!(domain: "clinica-for-life") do |o|
+    o.name = "Clínica For Life"
+  end
+
+  # ---------------------------------------------------------------------------
   # Trainers (personals)
   # ---------------------------------------------------------------------------
   trainers = {
@@ -16,6 +25,8 @@ ActiveRecord::Base.transaction do
       t.cref = "012345-G/SP"
       t.phone = "(11) 98888-1111"
       t.status = "active"
+      t.organization = default_org
+      t.approved_at = Time.current
     end,
     "Beatriz Lima" => Trainer.find_or_create_by!(email: "bia@forlife.app") do |t|
       t.name = "Beatriz Lima"
@@ -23,6 +34,8 @@ ActiveRecord::Base.transaction do
       t.cref = "023456-G/SP"
       t.phone = "(11) 98888-2222"
       t.status = "active"
+      t.organization = default_org
+      t.approved_at = Time.current
     end,
     "Carlos Eduardo" => Trainer.find_or_create_by!(email: "cadu@forlife.app") do |t|
       t.name = "Carlos Eduardo"
@@ -30,6 +43,8 @@ ActiveRecord::Base.transaction do
       t.cref = "034567-G/SP"
       t.phone = "(11) 98888-3333"
       t.status = "blocked"
+      t.organization = default_org
+      t.approved_at = Time.current
     end,
     "Marina Souza" => Trainer.find_or_create_by!(email: "marina@forlife.app") do |t|
       t.name = "Marina Souza"
@@ -37,6 +52,8 @@ ActiveRecord::Base.transaction do
       t.cref = "045678-G/SP"
       t.phone = "(11) 98888-4444"
       t.status = "inactive"
+      t.organization = default_org
+      t.approved_at = Time.current
     end
   }
 
@@ -61,6 +78,7 @@ ActiveRecord::Base.transaction do
       s.phone = attrs[:phone]
       s.trainer = trainer
       s.status = attrs[:status]
+      s.organization = default_org
     end
     acc[attrs[:name]] = student
   end
@@ -76,6 +94,7 @@ ActiveRecord::Base.transaction do
     u.role = "admin"
     u.password = "Admin@2026"
     u.terms_accepted_at = Time.current
+    u.organization = default_org
   end
 
   User.find_or_create_by!(email: "personal@forlife.app") do |u|
@@ -84,6 +103,7 @@ ActiveRecord::Base.transaction do
     u.password = "Personal@2026"
     u.trainer = rafael
     u.terms_accepted_at = Time.current
+    u.organization = default_org
   end
 
   User.find_or_create_by!(email: "aluno@forlife.app") do |u|
@@ -92,6 +112,7 @@ ActiveRecord::Base.transaction do
     u.password = "Aluno@2026"
     u.student = julia
     u.terms_accepted_at = Time.current
+    u.organization = default_org
   end
 
   # ---------------------------------------------------------------------------
@@ -232,6 +253,7 @@ ActiveRecord::Base.transaction do
       p.description = partner[:description]
       p.link = partner[:link]
       p.logo_url = partner[:logo_url]
+      p.organization = default_org
     end
   end
 end

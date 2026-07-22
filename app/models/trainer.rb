@@ -1,6 +1,7 @@
 class Trainer < ApplicationRecord
   STATUSES = %w[active blocked inactive].freeze
 
+  belongs_to :organization
   has_many :students, dependent: :nullify
   has_one :user, dependent: :nullify
   # trainer_id é NOT NULL em schedule_plans/schedule_sessions (sempre

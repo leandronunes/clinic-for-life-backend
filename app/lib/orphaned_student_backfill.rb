@@ -19,7 +19,7 @@ class OrphanedStudentBackfill
     student = nil
     ActiveRecord::Base.transaction do
       student = Student.find_by("lower(email) = ?", user.email) ||
-                Student.create!(name: user.name, email: user.email)
+                Student.create!(name: user.name, email: user.email, organization: user.organization)
       user.update!(student: student)
       AuditLog.create!(
         action: "user.backfill_orphaned_student",

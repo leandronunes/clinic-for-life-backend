@@ -40,7 +40,8 @@ module Api
           password: params[:password],
           password_confirmation: params[:password_confirmation],
           role: role,
-          trainer: trainer
+          trainer: trainer,
+          organization: trainer&.organization || student&.organization || default_organization
         )
         build_student_if_needed(user, student: student, role: role, name: params[:name], email: email)
 
@@ -80,7 +81,8 @@ module Api
           role: role,
           trainer: trainer,
           password: random_password,
-          password_confirmation: random_password
+          password_confirmation: random_password,
+          organization: trainer&.organization || student&.organization || default_organization
         )
         build_student_if_needed(user, student: student, role: role, name: name, email: email)
 
@@ -159,8 +161,18 @@ module Api
         if student
           user.student = student
         elsif role == "student"
-          user.build_student(name: name, email: email)
+          user.build_student(name: name, email: email, organization: user.organization)
         end
+      end
+
+      # Organização usada quando o cadastro não consegue resolver uma via
+      # trainer/student já existente (aluno órfão, autocadastrado sem
+      # nenhum convite prévio) — provisório: o fluxo completo de escolha de
+      # organização no cadastro (sozinho/entrar/criar) chega numa PR
+      # futura; por enquanto usa a organização legada única (só existe 1
+      # hoje, criada pela migração de backfill).
+      def default_organization
+        Organization.first_or_create!(name: "Organização padrão", domain: "organizacao-padrao")
       end
 
       def auth_me_params

@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe Trainer, type: :model do
   describe "associations" do
+    it { is_expected.to belong_to(:organization) }
     it { is_expected.to have_many(:students).dependent(:nullify) }
     it { is_expected.to have_one(:user).dependent(:nullify) }
   end

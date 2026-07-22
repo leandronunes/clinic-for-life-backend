@@ -6,6 +6,7 @@ class User < ApplicationRecord
 
   belongs_to :trainer, optional: true
   belongs_to :student, optional: true
+  belongs_to :organization
   has_many :audit_logs, dependent: :nullify
   has_many :push_subscriptions, dependent: :destroy
   has_many :authored_feedbacks, class_name: "CheckInFeedback", foreign_key: :author_id, dependent: :nullify

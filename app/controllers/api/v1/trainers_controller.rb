@@ -33,6 +33,8 @@ module Api
       # POST /api/v1/trainers
       def create
         trainer = Trainer.new(trainer_params)
+        trainer.organization_id = current_user.organization_id
+        trainer.approved_at = Time.current
         trainer.save!
         audit!("trainer.create", record: trainer)
         render_data(TrainerSerializer.new(trainer).as_json, status: :created)

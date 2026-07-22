@@ -64,8 +64,9 @@ module PactStates
         provider_state "an admin is authenticated" do
           set_up do
             clean_database!
-            FactoryBot.create(:trainer, id: PactStates::Students::TRAINER_ID)
-            PactStateContext.as(FactoryBot.create(:user, :admin))
+            organization = FactoryBot.create(:organization)
+            FactoryBot.create(:trainer, id: PactStates::Students::TRAINER_ID, organization: organization)
+            PactStateContext.as(FactoryBot.create(:user, :admin, organization: organization))
           end
         end
 
