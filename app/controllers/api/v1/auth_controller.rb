@@ -29,10 +29,12 @@ module Api
       # Otherwise: role == "student" builds a fresh orphan student profile
       # (#build_student_if_needed); role == "personal" creates a brand-new
       # Trainer per trainer_mode (#build_trainer_for_registration!) — solo
-      # (own private organization, self-approved), create_org (new
-      # organization, self-approved as its founder), or join (existing
-      # organization by id, pending that organization's admin approval —
-      # see Authorizable#block_if_pending_trainer!).
+      # (own private organization, self-approved) or create_org (new
+      # organization, self-approved) make this user that organization's
+      # **admin** (they founded it — see #build_registration_user), while
+      # join (existing organization by id) keeps them "personal", pending
+      # that organization's admin approval (see
+      # Authorizable#block_if_pending_trainer!).
       def register
         email = params[:email].to_s.downcase.strip
 
@@ -62,7 +64,8 @@ module Api
       # #build_registration_user). Google's own flow is single-shot (no
       # multi-step UI mid-redirect), so the frontend never actually offers
       # join/create_org before this call — a new personal via Google always
-      # ends up "solo" in practice, simply by never sending trainer_mode.
+      # ends up "solo" in practice, simply by never sending trainer_mode —
+      # and therefore becomes that private organization's admin.
       def google_auth
         userinfo = GoogleAuthService.fetch_userinfo(params[:access_token])
         return render json: { error: "Token do Google inválido" }, status: :unauthorized unless userinfo
@@ -157,8 +160,9 @@ module Api
       def build_registration_user(email:, name:)
         trainer = Trainer.find_by("lower(email) = ?", email)
         student = Student.find_by("lower(email) = ?", email)
+        founded_organization = trainer.nil? && params[:role] == "personal" && params[:trainer_mode] != "join"
         trainer ||= build_trainer_for_registration!(name: name, email: email) if params[:role] == "personal"
-        role = trainer.present? ? "personal" : "student"
+        role = resolve_role(trainer: trainer, founded_organization: founded_organization)
 
         user = User.new(
           name: name,
@@ -169,6 +173,21 @@ module Api
         )
         build_student_if_needed(user, student: student, role: role, name: name, email: email)
         user
+      end
+
+      # Whoever founds a brand-new organization (trainer_mode "solo" or
+      # "create_org" — anything but "join") becomes its admin, not a regular
+      # "personal": there's no other member yet to hold that role, and
+      # OrganizationScoped/Authorizable already treat admin as a strict
+      # superset of personal within one organization (an admin can still
+      # coach their own students via impersonation — see AppSidebar/docs).
+      # "join" and the legacy pre-existing-trainer claim both keep "personal"
+      # — neither one founded anything.
+      def resolve_role(trainer:, founded_organization:)
+        return "student" if trainer.nil?
+        return "admin" if founded_organization
+
+        "personal"
       end
 
       # A self-registered "student" always ends up with a real profile: if

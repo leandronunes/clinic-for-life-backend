@@ -117,11 +117,13 @@ paths:
         termina com um `student_id` válido); `role: "personal"` cria um
         Trainer novo conforme `trainer_mode` — `"solo"` (organização
         privada própria, já aprovado; também o default se `trainer_mode`
-        for omitido), `"create_org"` (organização nova com
-        `organization_name`/`organization_domain`, já aprovado como
-        fundador) ou `"join"` (organização existente por
-        `organization_id`, pendente de aprovação do admin dela — ver
-        `pending_approval` na resposta).
+        for omitido) ou `"create_org"` (organização nova com
+        `organization_name`/`organization_domain`, já aprovada) fazem
+        deste usuário o **admin** da organização recém-criada (a resposta
+        traz `role: "admin"`, não `"personal"`, já que ele é quem a
+        fundou); `"join"` (organização existente por `organization_id`)
+        mantém `role: "personal"`, pendente de aprovação do admin dela —
+        ver `pending_approval` na resposta.
       security: []
       requestBody:
         required: true
