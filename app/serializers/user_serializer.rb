@@ -9,7 +9,6 @@ class UserSerializer
       id: @user.id.to_s,
       name: @user.name,
       email: @user.email,
-      cpf: @user.cpf,
       role: @user.role,
       avatar_url: @user.avatar_url,
       trainer_id: @user.trainer_id&.to_s,
