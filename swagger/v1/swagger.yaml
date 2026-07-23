@@ -227,10 +227,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
     patch:
       tags: [Auth]
-      summary: Atualiza o nome/e-mail do usuário autenticado
+      summary: Atualiza o nome/e-mail/cpf do usuário autenticado
       operationId: updateCurrentUser
       description: >-
-        Qualquer papel autenticado pode atualizar o próprio nome/e-mail.
+        Qualquer papel autenticado pode atualizar o próprio nome/e-mail/cpf.
         `role` e as associações (`trainer_id`/`student_id`) não são
         aceitos por este endpoint.
       requestBody:
@@ -242,6 +242,7 @@ paths:
               properties:
                 name: { type: string }
                 email: { type: string, format: email }
+                cpf: { type: string, nullable: true }
       responses:
         "200":
           description: Usuário atualizado
@@ -3066,6 +3067,7 @@ components:
         id: { type: string }
         name: { type: string }
         email: { type: string, format: email }
+        cpf: { type: string, nullable: true }
         role: { $ref: "#/components/schemas/UserRole" }
         avatar_url: { type: string, format: uri, nullable: true }
         trainer_id: { type: string, nullable: true }

@@ -3,12 +3,13 @@ require "rails_helper"
 RSpec.describe UserSerializer do
   it "serializes a user with string ids" do
     student = create(:student)
-    user = create(:user, :student_account, student: student, avatar_url: "https://x/a.png")
+    user = create(:user, :student_account, student: student, avatar_url: "https://x/a.png", cpf: "11122233344")
     json = described_class.new(user).as_json
 
     expect(json[:id]).to eq(user.id.to_s)
     expect(json[:name]).to eq(user.name)
     expect(json[:email]).to eq(user.email)
+    expect(json[:cpf]).to eq("11122233344")
     expect(json[:role]).to eq("student")
     expect(json[:student_id]).to eq(student.id.to_s)
     expect(json[:trainer_id]).to be_nil

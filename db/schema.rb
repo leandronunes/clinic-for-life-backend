@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_142649) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_220548) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -361,6 +361,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_142649) do
 
   create_table "users", force: :cascade do |t|
     t.string "avatar_url"
+    t.string "cpf"
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.datetime "last_login_at"
@@ -375,6 +376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_142649) do
     t.datetime "terms_accepted_at"
     t.bigint "trainer_id"
     t.datetime "updated_at", null: false
+    t.index ["cpf"], name: "index_users_on_cpf", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["organization_id"], name: "index_users_on_organization_id"
     t.index ["reset_password_token_digest"], name: "index_users_on_reset_password_token_digest", unique: true
