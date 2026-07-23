@@ -19,6 +19,10 @@ RSpec.describe Organization, type: :model do
       expect(build(:organization, domain: "acme-clinic")).to be_valid
     end
 
+    it "accepts a full hostname with multiple labels" do
+      expect(build(:organization, domain: "acme.clinicforlife.com.br")).to be_valid
+    end
+
     it "rejects a domain with uppercase or invalid characters" do
       expect(build(:organization, domain: "Acme Clinic!")).not_to be_valid
     end
@@ -26,6 +30,12 @@ RSpec.describe Organization, type: :model do
     it "rejects a domain starting or ending with a hyphen" do
       expect(build(:organization, domain: "-acme")).not_to be_valid
       expect(build(:organization, domain: "acme-")).not_to be_valid
+    end
+
+    it "rejects a hostname with an empty label" do
+      expect(build(:organization, domain: "acme..com")).not_to be_valid
+      expect(build(:organization, domain: ".acme.com")).not_to be_valid
+      expect(build(:organization, domain: "acme.com.")).not_to be_valid
     end
   end
 

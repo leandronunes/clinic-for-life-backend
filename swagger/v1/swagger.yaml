@@ -2691,10 +2691,11 @@ paths:
       summary: Lista parceiros
       operationId: listPartners
       description: >-
-        Sem autenticação, retorna a vitrine pública. Passe `domain` para
-        restringi-la aos parceiros da organização com esse domain (senão
-        agrega parceiros de todas as organizações). Autenticado, ignora
-        `domain` e retorna sempre os parceiros da própria organização.
+        Sem autenticação, retorna a vitrine pública restrita aos parceiros da
+        organização cujo `domain` bate com o parâmetro `domain`; sem esse
+        parâmetro (ou sem organização correspondente), não retorna nenhum
+        parceiro. Autenticado, ignora `domain` e retorna sempre os parceiros
+        da própria organização.
       parameters:
         - name: category
           in: query
@@ -2703,7 +2704,8 @@ paths:
           in: query
           description: >-
             Domain da organização (ver Organization#domain). Só tem efeito
-            em requisições não autenticadas.
+            em requisições não autenticadas; obrigatório para a vitrine
+            pública retornar algum parceiro.
           schema: { type: string }
       responses:
         "200":
@@ -3109,7 +3111,12 @@ components:
         name: { type: string }
         domain:
           type: string
-          description: Identificador cosmético (slug), ex. "clinica-vitalidade".
+          description: >-
+            Identificador único da organização: um slug (ex.
+            "clinica-vitalidade") ou um hostname completo (ex.
+            "clinica-vitalidade.clinicforlife.com.br") quando a organização
+            tem um domínio próprio — usado para casar a vitrine pública de
+            parceiros com o host acessado (ver GET /api/v1/partners).
 
     SessionPayload:
       type: object
