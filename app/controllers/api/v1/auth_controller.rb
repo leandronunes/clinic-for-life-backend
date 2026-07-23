@@ -240,7 +240,7 @@ module Api
       end
 
       def auth_me_params
-        params.permit(:name, :email, :cpf)
+        params.permit(:name, :email)
       end
 
       def update_password_params

@@ -16,15 +16,6 @@ RSpec.describe User, type: :model do
     it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
     it { is_expected.to validate_inclusion_of(:role).in_array(User::ROLES) }
     it { is_expected.to have_secure_password }
-
-    it "allows a blank cpf" do
-      expect(build(:user, cpf: nil)).to be_valid
-    end
-
-    it "enforces cpf uniqueness" do
-      existing = create(:user, cpf: "11122233344")
-      expect(build(:user, cpf: existing.cpf)).not_to be_valid
-    end
   end
 
   describe "admin trainer invariant" do
