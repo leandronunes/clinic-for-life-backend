@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_212516) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_142649) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -302,6 +302,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_212516) do
     t.index ["student_id"], name: "index_structural_assessments_on_student_id", unique: true
   end
 
+  create_table "student_migration_requests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "requested_by_id", null: false
+    t.datetime "responded_at"
+    t.bigint "source_organization_id", null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "student_id", null: false
+    t.bigint "target_organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["requested_by_id"], name: "index_student_migration_requests_on_requested_by_id"
+    t.index ["source_organization_id"], name: "index_student_migration_requests_on_source_organization_id"
+    t.index ["student_id"], name: "index_one_pending_migration_per_student", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["student_id"], name: "index_student_migration_requests_on_student_id"
+    t.index ["target_organization_id"], name: "index_student_migration_requests_on_target_organization_id"
+  end
+
   create_table "students", force: :cascade do |t|
     t.date "birth_date"
     t.integer "contracted_workouts_per_cycle"
@@ -429,6 +445,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_212516) do
   add_foreign_key "schedule_sessions", "workout_check_ins"
   add_foreign_key "schedule_sessions", "workouts"
   add_foreign_key "structural_assessments", "students"
+  add_foreign_key "student_migration_requests", "organizations", column: "source_organization_id"
+  add_foreign_key "student_migration_requests", "organizations", column: "target_organization_id"
+  add_foreign_key "student_migration_requests", "students"
+  add_foreign_key "student_migration_requests", "users", column: "requested_by_id"
   add_foreign_key "students", "organizations"
   add_foreign_key "students", "trainers"
   add_foreign_key "trainers", "organizations"

@@ -1,0 +1,11 @@
+<p>Olá, <%= @student.name %>,</p>
+
+<p><%= @requested_by.name %> convidou você para migrar seu cadastro para a organização <strong><%= @organization.name %></strong> no Núcleo For Life.</p>
+
+<p>Entre na sua conta (ou crie uma, caso ainda não tenha) para aceitar ou recusar este convite.</p>
+
+<p>
+  <%= link_to "Acessar minha conta", @login_url %>
+</p>
+
+<p>Se você recusar, nada muda — seu cadastro continua exatamente como está hoje.</p>

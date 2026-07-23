@@ -109,6 +109,27 @@ RSpec.describe "Api::V1::Students", type: :request do
                                 headers: auth_headers(personal)
       expect(Student.last.contracted_workouts_per_cycle).to eq(8)
     end
+
+    it "returns a friendly same-organization duplicate email error" do
+      create(:student, email: "taken@email.com", trainer: trainer)
+      expect do
+        post "/api/v1/students", params: valid_params.merge(email: "TAKEN@email.com"), headers: auth_headers(admin)
+      end.not_to change(Student, :count)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_body["code"]).to eq("email_taken_same_organization")
+    end
+
+    it "returns a cross-organization duplicate email error without leaking the other org" do
+      other = create(:student, email: "taken@email.com")
+      expect(other.organization_id).not_to eq(admin.organization_id)
+
+      expect do
+        post "/api/v1/students", params: valid_params.merge(email: "taken@email.com"), headers: auth_headers(admin)
+      end.not_to change(Student, :count)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_body["code"]).to eq("email_taken_other_organization")
+      expect(json_body["error"]).not_to include(other.organization.name)
+    end
   end
 
   describe "PATCH /api/v1/students/:id" do

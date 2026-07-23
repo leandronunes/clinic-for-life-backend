@@ -31,6 +31,9 @@ module Api
 
       # POST /api/v1/students
       def create
+        existing = Student.find_by("lower(email) = ?", student_params[:email].to_s.downcase.strip)
+        return render_duplicate_email_error(existing) if existing
+
         student = Student.new(student_params.merge(admin_only_params).merge(staff_only_params))
         student.trainer_id ||= current_user.trainer_id if current_user.personal?
         student.organization_id = current_user.organization_id
@@ -94,6 +97,24 @@ module Api
 
       def set_student
         @student = Student.find(params[:id])
+      end
+
+      # Distinguishes the plain "Email has already been taken" validation
+      # failure into something actionable: same-org duplicates are just a
+      # mistake, but a cross-org duplicate is where StudentMigrationRequests
+      # come in (see StudentMigrationRequestsController#create) — deliberately
+      # doesn't leak the other organization's name/id to this admin.
+      def render_duplicate_email_error(existing)
+        audit!("student.create_blocked_duplicate_email",
+              metadata: { email: existing.email, same_organization: existing.organization_id == current_user.organization_id })
+
+        if existing.organization_id == current_user.organization_id
+          render json: { error: "Já existe um aluno cadastrado com este e-mail nesta organização.",
+                        code: "email_taken_same_organization" }, status: :unprocessable_content
+        else
+          render json: { error: "Este e-mail já está cadastrado em outra organização.",
+                        code: "email_taken_other_organization" }, status: :unprocessable_content
+        end
       end
 
       def student_params

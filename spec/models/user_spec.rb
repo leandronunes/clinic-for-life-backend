@@ -18,6 +18,41 @@ RSpec.describe User, type: :model do
     it { is_expected.to have_secure_password }
   end
 
+  describe "admin trainer invariant" do
+    it "auto-creates a Trainer for an admin created without one" do
+      org = create(:organization)
+      admin = create(:user, :admin, organization: org)
+
+      expect(admin.trainer_id).to be_present
+      expect(admin.trainer.organization_id).to eq(org.id)
+      expect(admin.trainer.name).to eq(admin.name)
+      expect(admin.trainer.email).to eq(admin.email)
+      expect(admin.trainer.approved_at).to be_present
+    end
+
+    it "reuses a pre-existing Trainer matching the admin's email instead of creating a duplicate" do
+      org = create(:organization)
+      pre_existing = create(:trainer, email: "shared@forlife.app", organization: org)
+
+      admin = create(:user, :admin, organization: org, email: "shared@forlife.app")
+
+      expect(admin.trainer_id).to eq(pre_existing.id)
+      expect(Trainer.where(email: "shared@forlife.app").count).to eq(1)
+    end
+
+    it "leaves an already-assigned trainer alone" do
+      trainer = create(:trainer)
+      admin = create(:user, :admin, trainer: trainer, organization: trainer.organization)
+
+      expect(admin.trainer_id).to eq(trainer.id)
+    end
+
+    it "does not create a trainer for non-admin roles" do
+      student_user = create(:user, :student_account)
+      expect(student_user.trainer_id).to be_nil
+    end
+  end
+
   describe "email normalization" do
     it "downcases and strips the email before validation" do
       user = create(:user, email: "  MixedCase@Forlife.APP ")
