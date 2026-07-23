@@ -7,6 +7,7 @@ class StudentSerializer
     {
       id: @student.id.to_s,
       name: @student.name,
+      cpf: @student.cpf,
       birth_date: @student.birth_date&.iso8601,
       sex: @student.sex,
       email: @student.email,

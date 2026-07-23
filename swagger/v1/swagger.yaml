@@ -3176,6 +3176,7 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
+        cpf: { type: string, nullable: true }
         birth_date: { type: string, format: date, nullable: true }
         sex: { $ref: "#/components/schemas/StudentSex" }
         email: { type: string, format: email }
@@ -3213,6 +3214,7 @@ components:
       required: [name, email, sex, status]
       properties:
         name: { type: string }
+        cpf: { type: string, nullable: true }
         birth_date: { type: string, format: date, nullable: true }
         sex: { $ref: "#/components/schemas/StudentSex" }
         email: { type: string, format: email }

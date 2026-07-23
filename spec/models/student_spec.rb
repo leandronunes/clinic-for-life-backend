@@ -35,6 +35,15 @@ RSpec.describe Student, type: :model do
     it "rejects a non-integer contracted_workouts_per_cycle" do
       expect(build(:student, contracted_workouts_per_cycle: 1.5)).not_to be_valid
     end
+
+    it "allows a blank cpf" do
+      expect(build(:student, cpf: nil)).to be_valid
+    end
+
+    it "enforces cpf uniqueness" do
+      existing = create(:student, cpf: "11122233344")
+      expect(build(:student, cpf: existing.cpf)).not_to be_valid
+    end
   end
 
   describe "email normalization" do
