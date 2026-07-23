@@ -33,6 +33,43 @@ RSpec.describe "Api::V1::Partners", type: :request do
       expect(response).to have_http_status(:ok)
       expect(json_body["data"].size).to eq(2)
     end
+
+    it "filters the public showcase by the organization's domain" do
+      organization = create(:organization, domain: "academia-x")
+      create(:partner, organization: organization)
+      create(:partner) # different organization entirely
+
+      get "/api/v1/partners", params: { domain: "academia-x" }
+
+      expect(json_body["data"].size).to eq(1)
+    end
+
+    it "matches the domain filter case-insensitively" do
+      organization = create(:organization, domain: "academia-x")
+      create(:partner, organization: organization)
+
+      get "/api/v1/partners", params: { domain: "ACADEMIA-X" }
+
+      expect(json_body["data"].size).to eq(1)
+    end
+
+    it "returns no partners for an unknown domain" do
+      create_list(:partner, 2)
+
+      get "/api/v1/partners", params: { domain: "no-such-domain" }
+
+      expect(json_body["data"]).to eq([])
+    end
+
+    it "ignores the domain filter for an authenticated request (already org-scoped)" do
+      create(:partner, organization: student_user.organization)
+      other_organization = create(:organization)
+
+      get "/api/v1/partners", params: { domain: other_organization.domain },
+                               headers: auth_headers(student_user)
+
+      expect(json_body["data"].size).to eq(1)
+    end
   end
 
   describe "POST /api/v1/partners" do

@@ -2690,9 +2690,20 @@ paths:
       tags: [Partners]
       summary: Lista parceiros
       operationId: listPartners
+      description: >-
+        Sem autenticação, retorna a vitrine pública. Passe `domain` para
+        restringi-la aos parceiros da organização com esse domain (senão
+        agrega parceiros de todas as organizações). Autenticado, ignora
+        `domain` e retorna sempre os parceiros da própria organização.
       parameters:
         - name: category
           in: query
+          schema: { type: string }
+        - name: domain
+          in: query
+          description: >-
+            Domain da organização (ver Organization#domain). Só tem efeito
+            em requisições não autenticadas.
           schema: { type: string }
       responses:
         "200":

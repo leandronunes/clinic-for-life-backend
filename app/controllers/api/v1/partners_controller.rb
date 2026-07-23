@@ -10,13 +10,15 @@ module Api
 
       # GET /api/v1/partners
       #
-      # Pré-autenticação (vitrine pública em /login e /cadastro): mostra o
-      # catálogo agregado de todas as organizações — só 4 parceiros hoje,
-      # baixo risco (parceria comercial curada, não dado de usuário), e
-      # evita inventar um conceito de "destaque" cross-org só pra isso.
-      # Autenticado: escopado à própria organização (catálogo privado).
+      # Pré-autenticação (vitrine pública em /login e /cadastro): o frontend
+      # passa ?domain=<domain da organização> para restringir a vitrine aos
+      # parceiros da organização correspondente. Sem esse param, cai de volta
+      # no catálogo agregado de todas as organizações — só 4 parceiros hoje,
+      # baixo risco (parceria comercial curada, não dado de usuário).
+      # Autenticado: sempre escopado à própria organização (catálogo
+      # privado); ?domain= é ignorado nesse caso.
       def index
-        partners = current_user ? partner_scope : Partner.all
+        partners = current_user ? partner_scope : public_partner_scope
         partners = partners.order(:category, :name)
         partners = partners.where(category: params[:category]) if params[:category].present?
         render_data(partners.map { |p| PartnerSerializer.new(p).as_json })
@@ -54,6 +56,12 @@ module Api
       end
 
       private
+
+      def public_partner_scope
+        return Partner.all unless params[:domain].present?
+
+        Partner.joins(:organization).where(organizations: { domain: params[:domain].to_s.downcase.strip })
+      end
 
       def partner_params
         params.permit(:name, :logo_url, :category, :description, :discount_details, :coupon, :link)
