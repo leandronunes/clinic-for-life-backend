@@ -16,7 +16,8 @@ RSpec.describe "Api::V1::Trainers", type: :request do
       create(:trainer, organization: admin.organization)
       create(:trainer) # different organization entirely
       get "/api/v1/trainers", headers: auth_headers(admin)
-      expect(json_body["meta"]["total"]).to eq(1)
+      # +1 for the admin's own auto-created trainer profile (see User#ensure_admin_has_trainer).
+      expect(json_body["meta"]["total"]).to eq(2)
     end
 
     it "does not filter by status when the param is absent" do
@@ -104,6 +105,7 @@ RSpec.describe "Api::V1::Trainers", type: :request do
     end
 
     it "creates a trainer as admin and records an audit log" do
+      admin # force creation (and its own auto-created trainer) before measuring the change
       expect do
         post "/api/v1/trainers", params: valid_params, headers: auth_headers(admin)
       end.to change(Trainer, :count).by(1).and change(AuditLog, :count).by(1)

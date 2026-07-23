@@ -982,6 +982,114 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/students/migration_requests:
+    post:
+      tags: [Students]
+      summary: Convida um aluno de outra organização a migrar para a organização atual
+      operationId: createStudentMigrationRequest
+      description: >-
+        Requer papel `admin`. Localiza o aluno pelo e-mail (não pelo id, já
+        que o admin convidante só conhece o e-mail digitado). Cria uma
+        solicitação pendente notificada ao aluno por e-mail (e por push, se
+        já tiver conta) — ele decide aceitar ou rejeitar via
+        POST .../accept ou .../reject. Só uma solicitação pendente por aluno
+        por vez.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentMigrationRequestInput" }
+      responses:
+        "201":
+          description: Solicitação criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StudentMigrationRequest" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: 'Nenhum aluno encontrado com este e-mail (code: student_not_found)'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: >-
+            code: "already_in_organization" (o aluno já pertence à
+            organização do admin convidante) ou "migration_already_pending"
+            (já existe uma solicitação pendente para este aluno).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/migration_requests/{id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [Students]
+      summary: Aceita uma solicitação de migração de organização
+      operationId: acceptStudentMigrationRequest
+      description: >-
+        Self-service — só o próprio aluno afetado (via seu User de role
+        `student`). Move o aluno (e seu User vinculado) para a organização
+        convidante, preservando todo o histórico (treinos, avaliações,
+        medições…), e atribui como trainer_id quem fez o convite.
+      responses:
+        "200":
+          description: Solicitação aceita
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StudentMigrationRequest" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: 'code: "migration_request_not_pending" — já foi aceita ou rejeitada.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/students/migration_requests/{id}/reject:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    post:
+      tags: [Students]
+      summary: Rejeita uma solicitação de migração de organização
+      operationId: rejectStudentMigrationRequest
+      description: >-
+        Self-service — só o próprio aluno afetado. Nada muda no cadastro do
+        aluno; ele permanece na organização atual.
+      responses:
+        "200":
+          description: Solicitação rejeitada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/StudentMigrationRequest" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: 'code: "migration_request_not_pending" — já foi aceita ou rejeitada.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/students:
     get:
       tags: [Students]
@@ -1017,7 +1125,14 @@ paths:
       tags: [Students]
       summary: Cria um aluno
       operationId: createStudent
-      description: Requer papel `admin` ou `personal`.
+      description: >-
+        Requer papel `admin` ou `personal`. Um e-mail já cadastrado retorna
+        422 com um `code` distinguindo os dois casos:
+        `email_taken_same_organization` (já existe um aluno com este e-mail
+        na própria organização) ou `email_taken_other_organization` (o
+        e-mail pertence a um aluno de outra organização — nesse caso um
+        admin pode convidar esse aluno a migrar via
+        POST /api/v1/students/migration_requests).
       requestBody:
         required: true
         content:
@@ -2911,6 +3026,14 @@ components:
             - type: string
             - type: array
               items: { type: string }
+        code:
+          type: string
+          nullable: true
+          description: >-
+            Identificador estável opcional para o frontend distinguir causas
+            específicas do mesmo status HTTP (ex.: "pending_approval",
+            "email_taken_same_organization", "email_taken_other_organization",
+            "migration_already_pending", "migration_request_not_pending").
 
     TotalMeta:
       type: object
@@ -2950,6 +3073,17 @@ components:
             numa organização existente ainda não foi aprovado pelo admin
             dela — nesse estado, a maioria dos endpoints retorna 403 (ver
             /api/v1/trainers/{id}/approve).
+        pending_migration_request:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/StudentMigrationRequest"
+          description: >-
+            Presente apenas quando este usuário é um aluno com uma
+            solicitação de migração de organização pendente (ver
+            POST /api/v1/students/migration_requests). Diferente de
+            pending_approval, isto é apenas informativo — não bloqueia o
+            acesso normal do aluno à sua organização atual.
 
     Organization:
       type: object
@@ -3092,6 +3226,28 @@ components:
             podem definir este campo; ignorado para os demais papéis. Prefira
             POST /students/{id}/renew_cycle para reiniciar o ciclo mantendo
             o anterior arquivado em AttendanceCycle.
+
+    StudentMigrationRequestStatus:
+      type: string
+      enum: [pending, accepted, rejected]
+
+    StudentMigrationRequest:
+      type: object
+      properties:
+        id: { type: string }
+        status: { $ref: "#/components/schemas/StudentMigrationRequestStatus" }
+        target_organization_name: { type: string }
+        requested_by_name: { type: string }
+        created_at: { type: string, format: date-time }
+
+    StudentMigrationRequestInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          description: E-mail do aluno já existente em outra organização a ser convidado.
 
     AttendanceCycle:
       type: object

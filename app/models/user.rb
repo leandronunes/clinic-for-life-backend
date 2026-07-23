@@ -18,6 +18,7 @@ class User < ApplicationRecord
   validate :password_strength, if: -> { password.present? }
 
   before_validation { self.email = email.to_s.downcase.strip }
+  before_validation :ensure_admin_has_trainer, if: -> { admin? && trainer.blank? }
 
   ROLES.each do |role_name|
     define_method("#{role_name}?") { role == role_name }
@@ -60,6 +61,18 @@ class User < ApplicationRecord
   end
 
   private
+
+  # Admin is a strict superset of personal throughout this app (see
+  # AuthController's founder-admin comment) — every admin needs a real Trainer
+  # row to be usable anywhere a personal already can be (e.g. as a student's
+  # trainer_id after an org-migration request is accepted). Founder-admins
+  # already arrive with trainer assigned before this runs; this only fills the
+  # gap for admins created some other way (seeds, future admin-invite flows).
+  def ensure_admin_has_trainer
+    self.trainer = Trainer.find_by("lower(email) = ?", email) ||
+                    Trainer.new(name: name, email: email, organization: organization,
+                                status: "active", approved_at: Time.current)
+  end
 
   # Strong password policy: min 8 chars, upper, lower, digit and special char.
   def password_strength

@@ -57,6 +57,18 @@ Rails.application.routes.draw do
         end
       end
 
+      # Cross-org student migration requests — admin invites a student who
+      # already exists (by e-mail) in another org; the affected student
+      # accepts/rejects self-service. Not nested under :student_id since the
+      # inviting admin only has the student's e-mail, not their id (see
+      # StudentsController#create's code: "email_taken_other_organization").
+      resources :student_migration_requests, only: %i[create], path: "students/migration_requests" do
+        member do
+          post :accept
+          post :reject
+        end
+      end
+
       # Students
       resources :students, only: %i[index show create update destroy] do
         member { post :renew_cycle }
