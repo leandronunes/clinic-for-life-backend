@@ -360,6 +360,12 @@ RSpec.describe "Api::V1::Auth", type: :request do
       expect(json_body["data"]["organization_solo"]).to be(true)
     end
 
+    it "includes the cpf" do
+      user_with_cpf = create(:user, :admin, cpf: "11122233344")
+      get "/api/v1/auth/me", headers: auth_headers(user_with_cpf)
+      expect(json_body["data"]["cpf"]).to eq("11122233344")
+    end
+
     it "rejects requests without a token" do
       get "/api/v1/auth/me"
       expect(response).to have_http_status(:unauthorized)
@@ -403,6 +409,23 @@ RSpec.describe "Api::V1::Auth", type: :request do
       create(:user, :admin, email: "taken@email.com")
       user = create(:user, :personal)
       patch "/api/v1/auth/me", params: { email: "taken@email.com" }, headers: auth_headers(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "lets a user set their own cpf" do
+      user = create(:user, :personal)
+      patch "/api/v1/auth/me", params: { cpf: "11122233344" }, headers: auth_headers(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]["cpf"]).to eq("11122233344")
+      expect(user.reload.cpf).to eq("11122233344")
+    end
+
+    it "rejects a duplicate cpf" do
+      create(:user, :admin, cpf: "11122233344")
+      user = create(:user, :personal)
+      patch "/api/v1/auth/me", params: { cpf: "11122233344" }, headers: auth_headers(user)
 
       expect(response).to have_http_status(:unprocessable_content)
     end
