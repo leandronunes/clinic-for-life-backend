@@ -1,5 +1,11 @@
 class Organization < ApplicationRecord
-  DOMAIN_FORMAT = /\A[a-z0-9]([a-z0-9-]*[a-z0-9])?\z/
+  # Aceita tanto um slug simples ("acme-clinic", usado no autoatendimento de
+  # cadastro) quanto um hostname completo com múltiplos rótulos
+  # ("acme.clinicforlife.com.br") — a vitrine pública de parceiros casa
+  # esse campo contra o host acessado pelo visitante (ver
+  # Api::V1::PartnersController#public_partner_scope).
+  DOMAIN_LABEL = /[a-z0-9]([a-z0-9-]*[a-z0-9])?/
+  DOMAIN_FORMAT = /\A#{DOMAIN_LABEL}(\.#{DOMAIN_LABEL})*\z/
 
   has_many :users, dependent: :nullify
   has_many :trainers, dependent: :nullify

@@ -11,10 +11,10 @@ module Api
       # GET /api/v1/partners
       #
       # Pré-autenticação (vitrine pública em /login e /cadastro): o frontend
-      # passa ?domain=<domain da organização> para restringir a vitrine aos
-      # parceiros da organização correspondente. Sem esse param, cai de volta
-      # no catálogo agregado de todas as organizações — só 4 parceiros hoje,
-      # baixo risco (parceria comercial curada, não dado de usuário).
+      # sempre passa ?domain=<host acessado pelo visitante> para restringir a
+      # vitrine aos parceiros da organização correspondente a esse domain.
+      # Sem esse param (ou sem organização com esse domain), não retorna
+      # nenhum parceiro — o frontend então esconde a seção inteira.
       # Autenticado: sempre escopado à própria organização (catálogo
       # privado); ?domain= é ignorado nesse caso.
       def index
@@ -58,7 +58,7 @@ module Api
       private
 
       def public_partner_scope
-        return Partner.all unless params[:domain].present?
+        return Partner.none unless params[:domain].present?
 
         Partner.joins(:organization).where(organizations: { domain: params[:domain].to_s.downcase.strip })
       end

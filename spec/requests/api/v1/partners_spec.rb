@@ -28,10 +28,20 @@ RSpec.describe "Api::V1::Partners", type: :request do
     end
 
     it "allows unauthenticated access (public partner showcase)" do
-      create_list(:partner, 2)
-      get "/api/v1/partners"
+      organization = create(:organization, domain: "academia-x")
+      create_list(:partner, 2, organization: organization)
+      get "/api/v1/partners", params: { domain: "academia-x" }
       expect(response).to have_http_status(:ok)
       expect(json_body["data"].size).to eq(2)
+    end
+
+    it "returns no partners for an unauthenticated request without a domain" do
+      create_list(:partner, 2)
+
+      get "/api/v1/partners"
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body["data"]).to eq([])
     end
 
     it "filters the public showcase by the organization's domain" do
@@ -49,6 +59,16 @@ RSpec.describe "Api::V1::Partners", type: :request do
       create(:partner, organization: organization)
 
       get "/api/v1/partners", params: { domain: "ACADEMIA-X" }
+
+      expect(json_body["data"].size).to eq(1)
+    end
+
+    it "filters by a full hostname domain" do
+      organization = create(:organization, domain: "academia1.clinicforlife.com.br")
+      create(:partner, organization: organization)
+      create(:partner) # different organization entirely
+
+      get "/api/v1/partners", params: { domain: "academia1.clinicforlife.com.br" }
 
       expect(json_body["data"].size).to eq(1)
     end
