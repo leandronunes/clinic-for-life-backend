@@ -20,6 +20,7 @@ class Student < ApplicationRecord
   has_many :migration_requests, class_name: "StudentMigrationRequest", dependent: :destroy
 
   validates :name, presence: true
+  validates :cpf, uniqueness: true, allow_blank: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :sex, presence: true, inclusion: { in: SEXES }

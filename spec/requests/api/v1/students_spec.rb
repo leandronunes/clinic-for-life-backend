@@ -110,6 +110,18 @@ RSpec.describe "Api::V1::Students", type: :request do
       expect(Student.last.contracted_workouts_per_cycle).to eq(8)
     end
 
+    it "persists the cpf" do
+      post "/api/v1/students", params: valid_params.merge(cpf: "11122233344"), headers: auth_headers(admin)
+      expect(response).to have_http_status(:created)
+      expect(json_body["data"]["cpf"]).to eq("11122233344")
+    end
+
+    it "rejects a duplicate cpf" do
+      create(:student, cpf: "11122233344", trainer: trainer)
+      post "/api/v1/students", params: valid_params.merge(cpf: "11122233344"), headers: auth_headers(admin)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
     it "returns a friendly same-organization duplicate email error" do
       create(:student, email: "taken@email.com", trainer: trainer)
       expect do
@@ -137,6 +149,12 @@ RSpec.describe "Api::V1::Students", type: :request do
       student = create(:student, trainer: trainer)
       patch "/api/v1/students/#{student.id}", params: { name: "Renamed" }, headers: auth_headers(personal)
       expect(student.reload.name).to eq("Renamed")
+    end
+
+    it "updates the cpf" do
+      student = create(:student, trainer: trainer)
+      patch "/api/v1/students/#{student.id}", params: { cpf: "11122233344" }, headers: auth_headers(personal)
+      expect(student.reload.cpf).to eq("11122233344")
     end
 
     it "lets a student update their own profile" do

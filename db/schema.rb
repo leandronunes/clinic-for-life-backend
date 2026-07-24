@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_230449) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_231852) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -321,6 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_230449) do
   create_table "students", force: :cascade do |t|
     t.date "birth_date"
     t.integer "contracted_workouts_per_cycle"
+    t.string "cpf"
     t.datetime "created_at", null: false
     t.datetime "cycle_started_at"
     t.string "email", null: false
@@ -334,6 +335,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_230449) do
     t.string "status", default: "active", null: false
     t.bigint "trainer_id"
     t.datetime "updated_at", null: false
+    t.index ["cpf"], name: "index_students_on_cpf", unique: true
     t.index ["email"], name: "index_students_on_email", unique: true
     t.index ["organization_id"], name: "index_students_on_organization_id"
     t.index ["status"], name: "index_students_on_status"

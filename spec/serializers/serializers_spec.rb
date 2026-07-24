@@ -31,10 +31,11 @@ end
 RSpec.describe StudentSerializer do
   it "serializes a student including the trainer name" do
     trainer = create(:trainer, name: "Rafael")
-    student = create(:student, trainer: trainer)
+    student = create(:student, trainer: trainer, cpf: "11122233344")
     json = described_class.new(student).as_json
 
     expect(json[:id]).to eq(student.id.to_s)
+    expect(json[:cpf]).to eq("11122233344")
     expect(json[:trainer_id]).to eq(trainer.id.to_s)
     expect(json[:trainer_name]).to eq("Rafael")
   end
